@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K8s可视化管理平台</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧集群列表 -->
+        <div class="sidebar">
+            <h3>集群列表</h3>
+            <ul id="cluster-list">
+                <!-- 集群项将通过JS动态添加 -->
+            </ul>
+            <button id="add-cluster-btn" class="add-btn">+</button>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <!-- 命名空间选择 -->
+            <div class="namespace-selector">
+                <label for="namespace-select">命名空间:</label>
+                <select id="namespace-select">
+                    <option value="default">default</option>
+                </select>
+                <button type="button" id="batch-update-image-btn" class="update-btn">快速更新镜像</button>
+            </div>
+
+            <!-- Tab导航 -->
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="deployments">工作负载</button>
+                <button class="tab-btn" data-tab="services">服务</button>
+                <button class="tab-btn" data-tab="pods">Pods</button>
+            </div>
+
+            <!-- 内容区域 -->
+            <div class="content">
+                <!-- 工作负载内容 -->
+                <div id="deployments-content" class="tab-content active">
+                    <h3>工作负载</h3>
+                    <div class="filter-container">
+                        <input type="text" id="deployments-filter" class="filter-input" placeholder="按名称筛选工作负载...">
+                    </div>
+                    <table id="deployments-table" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>名称</th>
+                                <th>就绪</th>
+                                <th>更新</th>
+                                <th>可用</th>
+                                <th>年龄</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 数据将通过JS动态填充 -->
+                        </tbody>
+                    </table>
+                    <div class="pagination" id="deployments-pagination"></div>
+                </div>
+
+                <!-- 服务内容 -->
+                <div id="services-content" class="tab-content">
+                    <h3>服务</h3>
+                    <div class="filter-container">
+                        <input type="text" id="services-filter" class="filter-input" placeholder="按名称筛选服务...">
+                    </div>
+                    <table id="services-table" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>名称</th>
+                                <th>类型</th>
+                                <th>集群IP</th>
+                                <th>端口</th>
+                                <th>年龄</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 数据将通过JS动态填充 -->
+                        </tbody>
+                    </table>
+                    <div class="pagination" id="services-pagination"></div>
+                </div>
+
+                <!-- Pods内容 -->
+                <div id="pods-content" class="tab-content">
+                    <h3>Pods</h3>
+                    <div class="filter-container">
+                        <input type="text" id="pods-filter" class="filter-input" placeholder="按名称筛选Pods...">
+                    </div>
+                    <table id="pods-table" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>名称</th>
+                                <th>就绪</th>
+                                <th>状态</th>
+                                <th>重启</th>
+                                <th>年龄</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 数据将通过JS动态填充 -->
+                        </tbody>
+                    </table>
+                    <div class="pagination" id="pods-pagination"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast通知容器 -->
+    <div id="toast-container"></div>
+
+    <!-- 添加集群模态框 -->
+    <div id="add-cluster-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>添加新集群</h2>
+            <form id="add-cluster-form">
+                <div class="form-group">
+                    <label for="cluster-name">集群名称:</label>
+                    <input type="text" id="cluster-name" name="cluster-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="cluster-namespace">默认命名空间:</label>
+                    <input type="text" id="cluster-namespace" name="cluster-namespace" value="default" required>
+                </div>
+                <div class="form-group">
+                    <label for="ssh-hostname">SSH主机:</label>
+                    <input type="text" id="ssh-hostname" name="ssh-hostname" required>
+                </div>
+                <div class="form-group">
+                    <label for="ssh-username">SSH用户名:</label>
+                    <input type="text" id="ssh-username" name="ssh-username" required>
+                </div>
+                <div class="form-group">
+                    <label for="ssh-password">SSH密码:</label>
+                    <input type="password" id="ssh-password" name="ssh-password">
+                </div>
+                <div class="form-group">
+                    <label for="ssh-key-path">SSH密钥路径(可选):</label>
+                    <input type="text" id="ssh-key-path" name="ssh-key-path">
+                </div>
+                <div class="form-group">
+                    <label for="ssh-port">SSH端口:</label>
+                    <input type="number" id="ssh-port" name="ssh-port" value="22" required>
+                </div>
+                <button type="submit">添加集群</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 更新镜像模态框 -->
+    <div id="update-image-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>更新部署镜像</h2>
+            <form id="update-image-form">
+                <div class="form-group">
+                    <label for="deployment-name">部署名称:</label>
+                    <input type="text" id="deployment-name" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="image-name">镜像名称:</label>
+                    <input type="text" id="image-name" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit">更新</button>
+                    <button type="button" id="cancel-update" class="cancel-btn">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 批量更新镜像模态框 -->
+    <div id="batch-update-image-modal" class="modal">
+        <div class="modal-content large-modal">
+            <span class="close">&times;</span>
+            <h2>更新镜像</h2>
+            <div class="batch-update-container">
+                <div class="form-group">
+                    <label for="search-image-name">镜像名称:</label>
+                    <input type="text" id="search-image-name" placeholder="请输入镜像名称...">
+                    <button type="button" id="search-deployments-btn" class="update-btn">查询</button>
+                </div>
+                
+                <div id="deployments-result" class="deployments-result">
+                    <p class="hint-text">请输入镜像名称并点击查询</p>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="close-batch-update" class="cancel-btn">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 删除Pod确认模态框 -->
+    <div id="delete-pod-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>确认删除</h2>
+            <div class="confirm-message">
+                <p>确认要删除Pod <strong id="delete-pod-name"></strong> 吗？</p>
+                <p class="warning-text">此操作将重启Pod，无法恢复！</p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="confirm-delete" class="danger-btn">确认删除</button>
+                <button type="button" id="cancel-delete" class="cancel-btn">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 查看日志模态框 -->
+    <div id="view-logs-modal" class="modal">
+        <div class="modal-content large-modal">
+            <span class="close">&times;</span>
+            <h2>Pod日志 - <span id="log-pod-name"></span></h2>
+            <div class="log-controls">
+                <div class="form-group inline">
+                    <label for="log-lines">显示行数:</label>
+                    <select id="log-lines">
+                        <option value="50">50行</option>
+                        <option value="100" selected>100行</option>
+                        <option value="200">200行</option>
+                        <option value="500">500行</option>
+                        <option value="1000">1000行</option>
+                        <option value="">全部</option>
+                    </select>
+                </div>
+                <button type="button" id="refresh-logs" class="update-btn">刷新</button>
+                <button type="button" id="download-logs" class="update-btn">下载日志</button>
+            </div>
+            <div class="log-content">
+                <pre id="log-output">加载中...</pre>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="close-logs" class="cancel-btn">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/script.js"></script>
+</body>
+</html>

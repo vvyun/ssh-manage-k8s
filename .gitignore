@@ -1,0 +1,6 @@
+/.venv/
+.idea
+# 集群配置文件（包含敏感信息）
+.clusters.yaml
+# 加密密钥文件（重要！丢失后无法解密）
+.crypto.key
