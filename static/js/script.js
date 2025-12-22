@@ -131,6 +131,11 @@ function bindEventListeners() {
     document.getElementById('cancel-scale').addEventListener('click', closeScaleDeploymentModal);
     document.querySelector('#scale-deployment-modal .close').addEventListener('click', closeScaleDeploymentModal);
     document.getElementById('scale-deployment-form').addEventListener('submit', scaleDeployment);
+    
+    // 删除集群模态框事件
+    document.getElementById('cancel-delete-cluster').addEventListener('click', closeDeleteClusterModal);
+    document.querySelector('#delete-cluster-modal .close').addEventListener('click', closeDeleteClusterModal);
+    document.getElementById('confirm-delete-cluster').addEventListener('click', confirmDeleteCluster);
 }
 
 // 加载集群列表
@@ -151,18 +156,58 @@ function loadClusters() {
                 nameSpan.className = 'cluster-name';
                 nameSpan.textContent = cluster.name;
                 
-                // 创建编辑图标
-                const editIcon = document.createElement('span');
-                editIcon.className = 'edit-icon';
-                editIcon.innerHTML = '✏️';
-                editIcon.title = '编辑集群名称';
-                editIcon.onclick = function(e) {
+                // 创建操作按钮
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'cluster-actions';
+                
+                // 创建操作按钮
+                const actionsBtn = document.createElement('button');
+                actionsBtn.className = 'actions-btn';
+                actionsBtn.innerHTML = '⋯';
+                actionsBtn.title = '操作';
+                
+                // 创建下拉菜单
+                const dropdown = document.createElement('div');
+                dropdown.className = 'dropdown-menu';
+                dropdown.style.display = 'none';
+                
+                // 重命名选项
+                const renameOption = document.createElement('div');
+                renameOption.className = 'dropdown-option';
+                renameOption.textContent = '重命名';
+                renameOption.onclick = function(e) {
                     e.stopPropagation();
+                    hideAllDropdowns();
                     editClusterName(cluster.name, li);
                 };
                 
+                // 删除选项
+                const deleteOption = document.createElement('div');
+                deleteOption.className = 'dropdown-option';
+                deleteOption.textContent = '删除';
+                deleteOption.onclick = function(e) {
+                    e.stopPropagation();
+                    hideAllDropdowns();
+                    showDeleteClusterModal(cluster.name);
+                };
+                
+                dropdown.appendChild(renameOption);
+                dropdown.appendChild(deleteOption);
+                
+                // 切换下拉菜单显示
+                actionsBtn.onclick = function(e) {
+                    e.stopPropagation();
+                    // 隐藏其他下拉菜单
+                    hideAllDropdowns();
+                    // 切换当前菜单
+                    dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+                };
+                
+                actionsDiv.appendChild(actionsBtn);
+                actionsDiv.appendChild(dropdown);
+                
                 li.appendChild(nameSpan);
-                li.appendChild(editIcon);
+                li.appendChild(actionsDiv);
                 
                 li.addEventListener('click', function() {
                     selectCluster(li.dataset.clusterId);
@@ -1129,5 +1174,59 @@ function updateClusterName(oldName, newName, listItem, editIcon) {
         console.error('更新集群名称失败:', error);
         showToast('更新集群名称失败', 'error');
         cancelEditClusterName(listItem, oldName, editIcon);
+    });
+}
+
+// 隐藏所有下拉菜单
+function hideAllDropdowns() {
+    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        menu.style.display = 'none';
+    });
+}
+
+// 点击页面其他地方隐藏下拉菜单
+document.addEventListener('click', function() {
+    hideAllDropdowns();
+});
+
+// 删除集群相关功能
+let clusterToDelete = null;
+
+function showDeleteClusterModal(clusterName) {
+    clusterToDelete = clusterName;
+    document.getElementById('delete-cluster-name').textContent = clusterName;
+    document.getElementById('delete-cluster-modal').style.display = 'block';
+}
+
+function closeDeleteClusterModal() {
+    clusterToDelete = null;
+    document.getElementById('delete-cluster-modal').style.display = 'none';
+}
+
+function confirmDeleteCluster() {
+    if (!clusterToDelete) {
+        showToast('无效的操作', 'error');
+        return;
+    }
+    
+    const clusterId = clusterToDelete.toLowerCase().replace(' ', '-');
+    
+    fetch(`/api/clusters/${clusterId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            closeDeleteClusterModal();
+            showToast(`集群 ${clusterToDelete} 已成功删除`, 'success');
+            // 重新加载集群列表
+            loadClusters();
+        } else {
+            showToast('删除集群失败: ' + (result.error || ''), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('删除集群失败:', error);
+        showToast('删除集群失败', 'error');
     });
 }

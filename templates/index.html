@@ -39,7 +39,6 @@
             <div class="content">
                 <!-- 工作负载内容 -->
                 <div id="deployments-content" class="tab-content active">
-                    <h3>工作负载</h3>
                     <div class="filter-container">
                         <input type="text" id="deployments-filter" class="filter-input" placeholder="按名称筛选工作负载...">
                     </div>
@@ -63,7 +62,6 @@
 
                 <!-- 服务内容 -->
                 <div id="services-content" class="tab-content">
-                    <h3>服务</h3>
                     <div class="filter-container">
                         <input type="text" id="services-filter" class="filter-input" placeholder="按名称筛选服务...">
                     </div>
@@ -86,7 +84,6 @@
 
                 <!-- Pods内容 -->
                 <div id="pods-content" class="tab-content">
-                    <h3>Pods</h3>
                     <div class="filter-container">
                         <input type="text" id="pods-filter" class="filter-input" placeholder="按名称筛选Pods...">
                     </div>
@@ -265,6 +262,22 @@
                     <button type="button" id="cancel-scale" class="cancel-btn">取消</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- 删除集群确认模态框 -->
+    <div id="delete-cluster-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>确认删除</h2>
+            <div class="confirm-message">
+                <p>确认要删除集群 <strong id="delete-cluster-name"></strong> 吗？</p>
+                <p class="warning-text">此操作将永久删除集群配置，无法恢复！</p>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="confirm-delete-cluster" class="danger-btn">确认删除</button>
+                <button type="button" id="cancel-delete-cluster" class="cancel-btn">取消</button>
+            </div>
         </div>
     </div>
 
