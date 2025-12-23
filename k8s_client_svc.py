@@ -94,14 +94,19 @@ def convert2map(res: dict) -> list[dict]:
     if not res["success"]:
         return []
     lines = res["output"].splitlines()
+    if len(lines) == 0:
+        return []
     header = lines[0]
     fields = header.split()
     ns_list = []
     for line in lines[1:]:
         ns_item = {}
         for field in fields:
+            field_name = str(field).replace("-", "_")
+            if field_name.__contains__("PORT"):
+                field_name = "PORTS"
             if len(line.split()) > fields.index(field):
-                ns_item[field] = line.split()[fields.index(field)]
+                ns_item[field_name] = line.split()[fields.index(field)]
         ns_list.append(ns_item)
     return ns_list
 
