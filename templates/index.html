@@ -130,53 +130,67 @@
     <div id="add-cluster-modal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <h2>添加新集群</h2>
-            <form id="add-cluster-form">
-                <div class="form-group">
-                    <label for="cluster-name">集群名称:</label>
-                    <input type="text" id="cluster-name" name="cluster-name" required>
-                </div>
-                <div class="form-group">
-                    <label for="cluster-controller">连接方式:</label>
-                    <select id="cluster-controller" name="cluster-controller">
-                        <option value="SSH">SSH</option>
-                        <option value="KUBE" selected>KUBE (kubeconfig)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="cluster-namespace">默认命名空间:</label>
-                    <input type="text" id="cluster-namespace" name="cluster-namespace" value="default" required>
-                </div>
-                <div id="ssh-fields">
+            <div class="modal-header">
+                <h2>添加新集群</h2>
+                <p class="modal-subtitle">选择连接方式并填写对应认证信息</p>
+            </div>
+            <form id="add-cluster-form" class="stacked-form">
+                <div class="form-grid two-col">
                     <div class="form-group">
-                        <label for="ssh-hostname">SSH主机:</label>
-                        <input type="text" id="ssh-hostname" name="ssh-hostname">
+                        <label for="cluster-name">集群名称</label>
+                        <input type="text" id="cluster-name" name="cluster-name" required>
                     </div>
                     <div class="form-group">
-                        <label for="ssh-username">SSH用户名:</label>
-                        <input type="text" id="ssh-username" name="ssh-username">
+                        <label for="cluster-namespace">默认命名空间</label>
+                        <input type="text" id="cluster-namespace" name="cluster-namespace" value="default" required>
                     </div>
                     <div class="form-group">
-                        <label for="ssh-password">SSH密码:</label>
-                        <input type="password" id="ssh-password" name="ssh-password">
-                    </div>
-                    <div class="form-group">
-                        <label for="ssh-key-path">SSH密钥路径(可选):</label>
-                        <input type="text" id="ssh-key-path" name="ssh-key-path">
-                    </div>
-                    <div class="form-group">
-                        <label for="ssh-port">SSH端口:</label>
-                        <input type="number" id="ssh-port" name="ssh-port" value="22">
+                        <label for="cluster-controller">连接方式</label>
+                        <select id="cluster-controller" name="cluster-controller">
+                            <option value="SSH">SSH</option>
+                            <option value="KUBE" selected>KUBE (kubeconfig)</option>
+                        </select>
                     </div>
                 </div>
-                <div id="kube-fields" style="display:none;">
+
+                <div id="ssh-fields" class="form-section">
+                    <div class="section-title">SSH 认证</div>
+                    <p>适用于仅能通过跳板机访问集群</p>
+                    <div class="form-grid two-col">
+                        <div class="form-group">
+                            <label for="ssh-hostname">SSH主机</label>
+                            <input type="text" id="ssh-hostname" name="ssh-hostname">
+                        </div>
+                        <div class="form-group">
+                            <label for="ssh-username">SSH用户名</label>
+                            <input type="text" id="ssh-username" name="ssh-username">
+                        </div>
+                        <div class="form-group">
+                            <label for="ssh-password">SSH密码</label>
+                            <input type="password" id="ssh-password" name="ssh-password">
+                        </div>
+                        <div class="form-group">
+                            <label for="ssh-key-path">SSH密钥路径 (可选)</label>
+                            <input type="text" id="ssh-key-path" name="ssh-key-path" placeholder="如 /home/user/.ssh/id_rsa">
+                        </div>
+                        <div class="form-group">
+                            <label for="ssh-port">SSH端口</label>
+                            <input type="number" id="ssh-port" name="ssh-port" value="22">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="kube-fields" class="form-section" style="display:none;">
+                    <div class="section-title">KUBE 认证</div>
                     <div class="form-group">
-                        <label for="kube-config-path">kubeconfig路径:</label>
+                        <label for="kube-config-path">kubeconfig 路径</label>
                         <input type="text" id="kube-config-path" name="kube-config-path" placeholder="例如 /home/user/.kube/config">
-                        <p class="hint-text">支持本地/挂载路径；若为空将使用默认路径 ~/.kube/config</p>
                     </div>
                 </div>
-                <button type="submit">添加集群</button>
+
+                <div class="modal-actions align-right">
+                    <button type="submit" class="update-btn">添加集群</button>
+                </div>
             </form>
         </div>
     </div>
@@ -314,4 +328,5 @@
 
     <script src="/static/js/script.js"></script>
 </body>
+</html>
 </html>
