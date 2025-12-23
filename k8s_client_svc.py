@@ -110,6 +110,14 @@ def convert2map(res: dict) -> list[dict]:
         ns_list.append(ns_item)
     return ns_list
 
+def re_connect_if_disconnect_decorator(func):
+    """前置调用装饰器"""
+    def wrapper(self, *args, **kwargs):
+        # 在调用原方法前执行统一操作
+        self.re_connect_if_disconnect(func.__name__)
+        # 调用原方法
+        return func(self, *args, **kwargs)
+    return wrapper
 
 class SshK8sClient:
     def __init__(self, ssh_config):
@@ -119,6 +127,13 @@ class SshK8sClient:
     def __del__(self):
         self.ssh_client.disconnect()
 
+    def re_connect_if_disconnect(self, method_name):
+        print(method_name)
+        res = self.ssh_client.execute_command("echo 'hello world'")
+        if not res.get('success', False) and res.get('error', '') == 'SSH session not active':
+            self.ssh_client.connect()
+
+    @re_connect_if_disconnect_decorator
     def get_namespace(self, ns: str) -> list[dict]:
         """
         获取命名空间
@@ -129,6 +144,7 @@ class SshK8sClient:
             return [next((item for item in result if item["NAME"] == ns), None)]
         return result
 
+    @re_connect_if_disconnect_decorator
     def get_deployments(self, ns: str) -> list[dict]:
         """
         获取部署
@@ -136,6 +152,7 @@ class SshK8sClient:
         result = self.ssh_client.execute_command(f"kubectl get deployments -n {ns}")
         return convert2map(result)
 
+    @re_connect_if_disconnect_decorator
     def get_pods(self, ns: str) -> list[dict]:
         """
         获取Pod
@@ -143,6 +160,7 @@ class SshK8sClient:
         result = self.ssh_client.execute_command(f"kubectl get pods -n {ns}")
         return convert2map(result)
 
+    @re_connect_if_disconnect_decorator
     def get_services(self, ns: str) -> list[dict]:
         """
         获取服务
@@ -150,27 +168,32 @@ class SshK8sClient:
         result = self.ssh_client.execute_command(f"kubectl get services -n {ns}")
         return convert2map(result)
 
+    @re_connect_if_disconnect_decorator
     def logs(self, ns: str = None, pods_name: str = None, lines: int = None) -> str:
         args = f"--tail {lines}" if lines else ""
         cmd = f"""kubectl logs {args} -n {ns} {pods_name}"""
         result = self.ssh_client.execute_command(cmd)
         return result["output"]
 
+    @re_connect_if_disconnect_decorator
     def delete_pod(self, ns: str = None, pod_name: str = None) -> str:
         cmd = f"""kubectl delete pods -n {ns} {pod_name}"""
         result = self.ssh_client.execute_command(cmd)
         return result["output"]
 
+    @re_connect_if_disconnect_decorator
     def update_deployment_image(self, ns: str = None, deploy_name: str = None, image: str = None) -> str:
         shell_cmd = f"""kubectl set image deployment/{deploy_name} {deploy_name}={image} -n {ns}"""
         result = self.ssh_client.execute_command(shell_cmd)
         return result["output"]
 
+    @re_connect_if_disconnect_decorator
     def get_deployment_images(self, ns: str = None) -> list[dict]:
         shell_cmd = f"""kubectl get deployments -n {ns} -o custom-columns=NAME:.metadata.name,IMAGES:.spec.template.spec.containers[*].image"""
         result = self.ssh_client.execute_command(shell_cmd)
         return convert2map(result)
 
+    @re_connect_if_disconnect_decorator
     def scale_deployment(self, ns: str = None, deploy_name: str = None, replicas: int = None) -> str:
         """
         伸缩容器副本数
