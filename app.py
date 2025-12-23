@@ -73,7 +73,9 @@ def init_clients():
         try:
             clients[cluster_id] = K8sClientSvc(
                 namespace=cluster_info.get('namespace', 'default'),
-                ssh_config=cluster_info.get('ssh_config')
+                k8s_controller=cluster_info.get('k8s_controller', 'SSH'),
+                ssh_config=cluster_info.get('ssh_config'),
+                kube_config=cluster_info.get('kube_config')
             )
         except Exception as e:
             # 初始化失败仅记录，相关接口会返回错误
