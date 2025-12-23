@@ -151,7 +151,6 @@ class SshK8sClient:
         return convert2map(result)
 
     def logs(self, ns: str = None, pods_name: str = None, lines: int = None) -> str:
-        print("pods名称 【", pods_name, "】")
         args = f"--tail {lines}" if lines else ""
         cmd = f"""kubectl logs {args} -n {ns} {pods_name}"""
         result = self.ssh_client.execute_command(cmd)
