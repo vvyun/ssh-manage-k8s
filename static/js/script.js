@@ -94,6 +94,10 @@ function bindEventListeners() {
     
     // 提交集群表单
     document.getElementById('add-cluster-form').addEventListener('submit', addCluster);
+    const controllerSelect = document.getElementById('cluster-controller');
+    if (controllerSelect) {
+        controllerSelect.addEventListener('change', toggleClusterAuthFields);
+    }
     
     // Tab切换
     document.querySelectorAll('.tab-btn').forEach(button => {
@@ -269,7 +273,12 @@ function renderClusterList(clusters, options = {}) {
         nsTag.className = 'cluster-tag';
         nsTag.textContent = `${cluster.namespace || 'default'}`;
         
+//        const typeTag = document.createElement('span');
+//        typeTag.className = 'cluster-tag secondary';
+//        typeTag.textContent = cluster.k8s_controller || 'SSH';
+
         meta.appendChild(nsTag);
+//        meta.appendChild(typeTag);
         infoDiv.appendChild(title);
         infoDiv.appendChild(meta);
         
@@ -376,6 +385,7 @@ function loadNamespaces(clusterId) {
 function showAddClusterModal() {
     // 清空表单
     document.getElementById('add-cluster-form').reset();
+    toggleClusterAuthFields();
     document.getElementById('add-cluster-modal').style.display = 'block';
 }
 
@@ -386,22 +396,54 @@ function closeAddClusterModal() {
     document.getElementById('add-cluster-form').reset();
 }
 
+// 切换连接方式显示不同表单
+function toggleClusterAuthFields() {
+    const controllerSelect = document.getElementById('cluster-controller');
+    const sshFields = document.getElementById('ssh-fields');
+    const kubeFields = document.getElementById('kube-fields');
+    const mode = controllerSelect ? controllerSelect.value : 'SSH';
+
+    if (mode === 'KUBE') {
+        sshFields.style.display = 'none';
+        kubeFields.style.display = 'block';
+    } else {
+        sshFields.style.display = 'block';
+        kubeFields.style.display = 'none';
+    }
+}
+
 // 添加集群
 function addCluster(event) {
     event.preventDefault();
     const addclusterform = document.getElementById('add-cluster-form')
     const formData = new FormData(addclusterform);
+    const k8sController = formData.get('cluster-controller') || 'KUBE';
+
     const clusterData = {
         name: formData.get('cluster-name'),
         namespace: formData.get('cluster-namespace'),
-        ssh_config: {
+        k8s_controller: k8sController,
+    };
+    if (k8sController === 'SSH') {
+        if (!formData.get('ssh-hostname') || !formData.get('ssh-username')) {
+            showToast('请填写 SSH 主机与用户名', 'warning');
+            return;
+        }
+        clusterData.ssh_config = {
             hostname: formData.get('ssh-hostname'),
             username: formData.get('ssh-username'),
             password: formData.get('ssh-password') || '',
             port: parseInt(formData.get('ssh-port')) || 22,
             key_path: formData.get('ssh-key-path') || ''
+        };
+    } else if (k8sController === 'KUBE') {
+        const kubeConfigPath = formData.get('kube-config-path');
+        if (kubeConfigPath) {
+            clusterData.kube_config = kubeConfigPath;
+        } else {
+            clusterData.kube_config = null; // 走默认路径
         }
-    };
+    }
     
     fetch('/api/clusters', {
         method: 'POST',

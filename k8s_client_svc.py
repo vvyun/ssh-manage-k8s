@@ -13,7 +13,7 @@ class K8sClientSvc:
     def __init__(
             self,
             namespace="default",
-            k8s_controller="SSH",  # 操作方式
+            k8s_controller="KUBE",  # 操作方式
             ssh_config=None,
             kube_config=None,
     ):

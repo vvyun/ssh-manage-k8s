@@ -111,12 +111,15 @@ def add_cluster():
     """添加新集群"""
     data = request.json
     cluster_id = data['name']
+    k8s_controller = data.get('k8s_controller', 'SSH')
 
     # 先初始化客户端，避免反复创建
     try:
         client = K8sClientSvc(
             namespace=data.get('namespace', 'default'),
-            ssh_config=data.get('ssh_config')
+            k8s_controller=k8s_controller,
+            ssh_config=data.get('ssh_config'),
+            kube_config=data.get('kube_config')
         )
     except Exception as e:
         return jsonify({"success": False, "error": f"初始化集群客户端失败: {e}"}), 500
