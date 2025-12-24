@@ -58,6 +58,22 @@ class K8sClientSvc:
             ns = self.namespace
         return self.client.get_services(ns)
 
+    def get_configmaps(self, ns: str = None) -> list[dict]:
+        """
+        获取ConfigMap
+        """
+        if ns is None:
+            ns = self.namespace
+        return self.client.get_configmaps(ns)
+
+    def get_ingresses(self, ns: str = None) -> list[dict]:
+        """
+        获取Ingress
+        """
+        if ns is None:
+            ns = self.namespace
+        return self.client.get_ingresses(ns)
+
     def logs(self, ns: str = None, pod_name: str = None, lines: int = None) -> str:
         if ns is None:
             ns = self.namespace
@@ -234,6 +250,22 @@ class SshK8sClient:
         cmd = f"""kubectl logs {args} -n {ns} {pods_name}"""
         result = self.ssh_client.execute_command(cmd)
         return result["output"]
+
+    @re_connect_if_disconnect_decorator
+    def get_configmaps(self, ns: str) -> list[dict]:
+        """
+        获取ConfigMap
+        """
+        result = self.ssh_client.execute_command(f"kubectl get configmaps -n {ns}")
+        return convert2map(result)
+
+    @re_connect_if_disconnect_decorator
+    def get_ingresses(self, ns: str) -> list[dict]:
+        """
+        获取Ingress
+        """
+        result = self.ssh_client.execute_command(f"kubectl get ingress -n {ns}")
+        return convert2map(result)
 
     @re_connect_if_disconnect_decorator
     def delete_pod(self, ns: str = None, pod_name: str = None) -> str:
@@ -652,6 +684,52 @@ class KubeK8sClient:
             namespace=ns or self.namespace,
             tail_lines=lines
         )
+
+    @switch_kubeconfig_decorator
+    def get_configmaps(self, ns: str) -> List[Dict]:
+        """
+        获取ConfigMap
+        """
+        configmaps = self.core_v1.list_namespaced_config_map(ns).items
+        result = []
+        for cm in configmaps:
+            result.append({
+                "NAME": cm.metadata.name,
+                "DATA": str(len(cm.data)) if cm.data else "0",
+                "AGE": self._format_age(cm.metadata.creation_timestamp),
+            })
+        return result
+
+    @switch_kubeconfig_decorator
+    def get_ingresses(self, ns: str) -> List[Dict]:
+        """
+        获取Ingress
+        """
+        # 需要导入networking v1 API
+        networking_v1 = k8s_client.NetworkingV1Api()
+        ingresses = networking_v1.list_namespaced_ingress(ns).items
+        result = []
+        for ing in ingresses:
+            hosts = []
+            if ing.spec.rules:
+                for rule in ing.spec.rules:
+                    if rule.host:
+                        hosts.append(rule.host)
+            addresses = []
+            if ing.status.load_balancer and ing.status.load_balancer.ingress:
+                for lb_ingress in ing.status.load_balancer.ingress:
+                    if lb_ingress.ip:
+                        addresses.append(lb_ingress.ip)
+                    elif lb_ingress.hostname:
+                        addresses.append(lb_ingress.hostname)
+            result.append({
+                "NAME": ing.metadata.name,
+                "CLASS": getattr(ing.spec, 'ingress_class_name', '') if ing.spec else '',
+                "HOSTS": ",".join(hosts) if hosts else "*",
+                "ADDRESS": ",".join(addresses) if addresses else "",
+                "AGE": self._format_age(ing.metadata.creation_timestamp),
+            })
+        return result
 
     @switch_kubeconfig_decorator
     def delete_pod(self, ns: str = None, pod_name: str = None) -> str:

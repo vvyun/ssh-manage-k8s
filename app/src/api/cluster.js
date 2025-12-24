@@ -29,6 +29,12 @@ export const getServices = (clusterId, namespace) =>
 export const getPods = (clusterId, namespace) => 
   api.get(`/clusters/${clusterId}/pods`, { params: { namespace } })
 
+export const getConfigmaps = (clusterId, namespace) =>
+  api.get(`/clusters/${clusterId}/configmaps`, { params: { namespace } })
+
+export const getIngresses = (clusterId, namespace) =>
+  api.get(`/clusters/${clusterId}/ingresses`, { params: { namespace } })
+
 export const updateDeploymentImage = (clusterId, deploymentName, image, namespace) =>
   api.post(`/clusters/${clusterId}/deployments/${deploymentName}/update-image`, 
     { image }, 

@@ -73,6 +73,22 @@
             @refresh="loadCurrentTabData"
           />
         </el-tab-pane>
+        <el-tab-pane label="ConfigMaps" name="configmaps">
+          <ConfigMapsTable 
+            ref="configmapsTableRef"
+            :cluster-id="clusterId"
+            :namespace="currentNamespace"
+            @refresh="loadCurrentTabData"
+          />
+        </el-tab-pane>
+        <el-tab-pane label="Ingress" name="ingresses">
+          <IngressesTable 
+            ref="ingressesTableRef"
+            :cluster-id="clusterId"
+            :namespace="currentNamespace"
+            @refresh="loadCurrentTabData"
+          />
+        </el-tab-pane>
       </el-tabs>
     </template>
     
@@ -115,6 +131,8 @@ import { getNamespaces, createNamespace, deleteNamespace } from '../api/cluster'
 import DeploymentsTable from '../components/DeploymentsTable.vue'
 import ServicesTable from '../components/ServicesTable.vue'
 import PodsTable from '../components/PodsTable.vue'
+import ConfigMapsTable from '../components/ConfigMapsTable.vue'
+import IngressesTable from '../components/IngressesTable.vue'
 import BatchUpdateImageDialog from '../components/BatchUpdateImageDialog.vue'
 
 const store = useStore()
@@ -127,6 +145,8 @@ const newNamespaceName = ref('')
 const deploymentsTableRef = ref(null)
 const servicesTableRef = ref(null)
 const podsTableRef = ref(null)
+const configmapsTableRef = ref(null)
+const ingressesTableRef = ref(null)
 
 const currentCluster = computed(() => store.state.currentCluster)
 const currentNamespace = computed({
@@ -223,6 +243,10 @@ const loadCurrentTabData = () => {
     servicesTableRef.value.loadData()
   } else if (activeTab.value === 'pods' && podsTableRef.value && podsTableRef.value.loadData) {
     podsTableRef.value.loadData()
+  } else if (activeTab.value === 'configmaps' && configmapsTableRef.value && configmapsTableRef.value.loadData) {
+    configmapsTableRef.value.loadData()
+  } else if (activeTab.value === 'ingresses' && ingressesTableRef.value && ingressesTableRef.value.loadData) {
+    ingressesTableRef.value.loadData()
   }
 }
 

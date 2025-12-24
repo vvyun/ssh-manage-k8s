@@ -320,6 +320,38 @@ def get_pods(cluster_id):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/clusters/<cluster_id>/configmaps', methods=['GET'])
+def get_configmaps(cluster_id):
+    """获取ConfigMap列表"""
+    namespace = request.args.get('namespace', 'default')
+
+    client, error_resp = get_cluster_client(cluster_id)
+    if error_resp:
+        return error_resp
+
+    try:
+        configmaps = client.get_configmaps(namespace)
+        return jsonify(configmaps)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/clusters/<cluster_id>/ingresses', methods=['GET'])
+def get_ingresses(cluster_id):
+    """获取Ingress列表"""
+    namespace = request.args.get('namespace', 'default')
+
+    client, error_resp = get_cluster_client(cluster_id)
+    if error_resp:
+        return error_resp
+
+    try:
+        ingresses = client.get_ingresses(namespace)
+        return jsonify(ingresses)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/clusters/<cluster_id>/deployments/<deployment_name>/update-image', methods=['POST'])
 def update_deployment_image(cluster_id, deployment_name):
     """更新部署镜像"""
