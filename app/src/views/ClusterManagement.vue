@@ -33,6 +33,19 @@
         >
           快速更新镜像
         </el-button>
+        <el-button 
+          type="warning"
+          @click="showCreateNamespaceDialog = true"
+        >
+          新建命名空间
+        </el-button>
+        <el-button 
+          type="danger"
+          :disabled="!currentNamespace || currentNamespace === 'default'"
+          @click="handleDeleteNamespace"
+        >
+          删除命名空间
+        </el-button>
       </div>
       
       <!-- Tab导航 -->
@@ -69,14 +82,36 @@
       :cluster-id="clusterId"
       :namespace="currentNamespace"
     />
+    
+    <!-- 创建命名空间对话框 -->
+    <el-dialog
+      v-model="showCreateNamespaceDialog"
+      title="创建命名空间"
+      width="400px"
+    >
+      <el-form :model="{ namespace: newNamespaceName }" label-width="100px">
+        <el-form-item label="命名空间名称">
+          <el-input
+            v-model="newNamespaceName"
+            placeholder="请输入命名空间名称"
+            @keyup.enter="handleCreateNamespace"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showCreateNamespaceDialog = false">取消</el-button>
+        <el-button type="primary" @click="handleCreateNamespace">创建</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useStore } from 'vuex'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
-import { getNamespaces } from '../api/cluster'
+import { getNamespaces, createNamespace, deleteNamespace } from '../api/cluster'
 import DeploymentsTable from '../components/DeploymentsTable.vue'
 import ServicesTable from '../components/ServicesTable.vue'
 import PodsTable from '../components/PodsTable.vue'
@@ -87,6 +122,8 @@ const store = useStore()
 const activeTab = ref('deployments')
 const namespaces = ref([])
 const showBatchUpdateDialog = ref(false)
+const showCreateNamespaceDialog = ref(false)
+const newNamespaceName = ref('')
 const deploymentsTableRef = ref(null)
 const servicesTableRef = ref(null)
 const podsTableRef = ref(null)
@@ -125,6 +162,57 @@ const handleNamespaceChange = () => {
 
 const handleTabChange = () => {
   loadCurrentTabData()
+}
+
+const handleCreateNamespace = async () => {
+  if (!newNamespaceName.value.trim()) {
+    ElMessage.error('请输入命名空间名称')
+    return
+  }
+
+  try {
+    await createNamespace(clusterId.value, newNamespaceName.value.trim())
+    ElMessage.success('命名空间创建成功')
+    showCreateNamespaceDialog.value = false
+    newNamespaceName.value = ''
+    await loadNamespaces() // 重新加载命名空间列表
+    
+    // 如果当前没有选择命名空间，自动选择新创建的命名空间
+    if (!currentNamespace.value) {
+      currentNamespace.value = newNamespaceName.value.trim()
+    }
+  } catch (error) {
+    ElMessage.error(`创建命名空间失败: ${error.message || error}`)
+  }
+}
+
+const handleDeleteNamespace = async () => {
+  try {
+    await ElMessageBox.confirm(
+      `确认要删除命名空间 "${currentNamespace.value}" 吗？此操作无法撤销！`,
+      '确认删除',
+      {
+        confirmButtonText: '确认删除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    await deleteNamespace(clusterId.value, currentNamespace.value)
+    ElMessage.success('命名空间删除成功')
+    
+    // 重新加载命名空间列表并选择第一个
+    await loadNamespaces()
+    if (namespaces.value.length > 0) {
+      currentNamespace.value = namespaces.value[0].NAME
+    } else {
+      currentNamespace.value = 'default'
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(`删除命名空间失败: ${error.message || error}`)
+    }
+  }
 }
 
 const loadCurrentTabData = () => {

@@ -96,6 +96,22 @@ class K8sClientSvc:
             raise Exception("replicas 非空")
         return self.client.scale_deployment(ns, deploy_name, replicas)
 
+    def create_namespace(self, ns: str) -> str:
+        """
+        创建命名空间
+        """
+        if not ns:
+            raise Exception("namespace name 非空")
+        return self.client.create_namespace(ns)
+
+    def delete_namespace(self, ns: str) -> str:
+        """
+        删除命名空间
+        """
+        if not ns:
+            raise Exception("namespace name 非空")
+        return self.client.delete_namespace(ns)
+
 
 def convert2map(res: dict) -> list[dict]:
     if not res["success"]:
@@ -212,6 +228,44 @@ class SshK8sClient:
         shell_cmd = f"""kubectl scale deployment/{deploy_name} --replicas={replicas} -n {ns}"""
         result = self.ssh_client.execute_command(shell_cmd)
         return result["output"]
+
+    @re_connect_if_disconnect_decorator
+    def create_namespace(self, ns: str) -> str:
+        """
+        创建命名空间
+        """
+        if not ns:
+            raise Exception("namespace name 非空")
+        
+        # 检查命名空间是否已存在
+        result = self.ssh_client.execute_command(f"kubectl get namespace {ns}")
+        if result.get('success', False):
+            raise Exception(f"命名空间 {ns} 已存在")
+        
+        # 创建命名空间
+        result = self.ssh_client.execute_command(f"kubectl create namespace {ns}")
+        if not result.get('success', False):
+            raise Exception(f"创建命名空间 {ns} 失败: {result.get('error', 'Unknown error')}")
+        return f"命名空间 {ns} 创建成功"
+
+    @re_connect_if_disconnect_decorator
+    def delete_namespace(self, ns: str) -> str:
+        """
+        删除命名空间
+        """
+        if not ns:
+            raise Exception("namespace name 非空")
+        
+        # 检查命名空间是否存在
+        result = self.ssh_client.execute_command(f"kubectl get namespace {ns}")
+        if not result.get('success', False):
+            raise Exception(f"命名空间 {ns} 不存在")
+        
+        # 删除命名空间
+        result = self.ssh_client.execute_command(f"kubectl delete namespace {ns}")
+        if not result.get('success', False):
+            raise Exception(f"删除命名空间 {ns} 失败: {result.get('error', 'Unknown error')}")
+        return f"命名空间 {ns} 删除成功"
 
 
 def switch_kubeconfig_decorator(func):
@@ -414,6 +468,54 @@ class KubeK8sClient:
         body = {"spec": {"replicas": replicas}}
         self.apps_v1.patch_namespaced_deployment_scale(name=deploy_name, namespace=ns, body=body)
         return "deployment scaled"
+
+    @switch_kubeconfig_decorator
+    def create_namespace(self, ns: str) -> str:
+        """
+        创建命名空间
+        """
+        if not ns:
+            raise Exception("namespace name 非空")
+        
+        # 检查命名空间是否已存在
+        try:
+            existing_ns = self.core_v1.read_namespace(name=ns)
+            if existing_ns:
+                raise Exception(f"命名空间 {ns} 已存在")
+        except k8s_client.ApiException as e:
+            if e.status != 404:
+                # 如果不是404错误（即不是因为不存在而报错），则抛出异常
+                raise e
+        
+        # 创建命名空间
+        namespace = k8s_client.V1Namespace(
+            metadata=k8s_client.V1ObjectMeta(name=ns)
+        )
+        self.core_v1.create_namespace(body=namespace)
+        return f"命名空间 {ns} 创建成功"
+
+    @switch_kubeconfig_decorator
+    def delete_namespace(self, ns: str) -> str:
+        """
+        删除命名空间
+        """
+        if not ns:
+            raise Exception("namespace name 非空")
+        
+        # 检查命名空间是否存在
+        try:
+            existing_ns = self.core_v1.read_namespace(name=ns)
+            if not existing_ns:
+                raise Exception(f"命名空间 {ns} 不存在")
+        except k8s_client.ApiException as e:
+            if e.status == 404:
+                raise Exception(f"命名空间 {ns} 不存在")
+            else:
+                raise e
+        
+        # 删除命名空间
+        self.core_v1.delete_namespace(name=ns)
+        return f"命名空间 {ns} 删除成功"
 
 
 if __name__ == "__main__":
