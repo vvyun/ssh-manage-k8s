@@ -123,6 +123,16 @@ class K8sClientSvc:
             raise Exception("namespace 非空")
         return self.client.get_deployment_detail(deploy_name, ns)
 
+    def get_service_detail(self, service_name: str, ns: str) -> dict:
+        """
+        获取Service详情
+        """
+        if not service_name:
+            raise Exception("service_name 非空")
+        if not ns:
+            raise Exception("namespace 非空")
+        return self.client.get_service_detail(service_name, ns)
+
 
 def convert2map(res: dict) -> list[dict]:
     if not res["success"]:
@@ -295,6 +305,24 @@ class SshK8sClient:
         
         deployment_yaml = yaml.safe_load(result['output'])
         return deployment_yaml
+
+    @re_connect_if_disconnect_decorator
+    def get_service_detail(self, service_name: str, ns: str) -> dict:
+        """
+        获取Service详情
+        """
+        if not service_name:
+            raise Exception("service_name 非空")
+        if not ns:
+            raise Exception("namespace 非空")
+        
+        # 使用kubectl获取Service的YAML格式详情
+        result = self.ssh_client.execute_command(f"kubectl get service {service_name} -n {ns} -o yaml")
+        if not result.get('success', False):
+            raise Exception(f"获取Service {service_name} 详情失败: {result.get('error', 'Unknown error')}")
+        
+        service_yaml = yaml.safe_load(result['output'])
+        return service_yaml
 
 
 def switch_kubeconfig_decorator(func):
@@ -578,6 +606,41 @@ class KubeK8sClient:
         except k8s_client.ApiException as e:
             if e.status == 404:
                 raise Exception(f"Deployment {deploy_name} 在命名空间 {ns} 中不存在")
+            else:
+                raise e
+
+    @switch_kubeconfig_decorator
+    def get_service_detail(self, service_name: str, ns: str) -> dict:
+        """
+        获取Service详情
+        """
+        if not service_name:
+            raise Exception("service_name 非空")
+        if not ns:
+            raise Exception("namespace 非空")
+        
+        try:
+            service = self.core_v1.read_namespaced_service(name=service_name, namespace=ns)
+            # 将Service对象转换为字典格式
+            service_dict = {
+                "apiVersion": service.api_version,
+                "kind": service.kind,
+                "metadata": {
+                    "name": service.metadata.name,
+                    "namespace": service.metadata.namespace,
+                    "creation_timestamp": service.metadata.creation_timestamp,
+                    "labels": service.metadata.labels,
+                    "annotations": service.metadata.annotations,
+                    "resource_version": service.metadata.resource_version,
+                    "uid": service.metadata.uid,
+                },
+                "spec": service.spec.to_dict(),
+                "status": service.status.to_dict() if service.status else None,
+            }
+            return service_dict
+        except k8s_client.ApiException as e:
+            if e.status == 404:
+                raise Exception(f"Service {service_name} 在命名空间 {ns} 中不存在")
             else:
                 raise e
 

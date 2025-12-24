@@ -20,6 +20,9 @@ export const getDeployments = (clusterId, namespace) =>
 export const getDeploymentDetail = (clusterId, deploymentName, namespace) =>
   api.get(`/clusters/${clusterId}/deployments/${deploymentName}/detail`, { params: { namespace } })
 
+export const getServiceDetail = (clusterId, serviceName, namespace) =>
+  api.get(`/clusters/${clusterId}/services/${serviceName}/detail`, { params: { namespace } })
+
 export const getServices = (clusterId, namespace) => 
   api.get(`/clusters/${clusterId}/services`, { params: { namespace } })
 
