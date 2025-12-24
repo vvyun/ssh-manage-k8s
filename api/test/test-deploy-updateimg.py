@@ -2,7 +2,7 @@
 import json
 import os
 
-from k8s_client_svc import K8sClientSvc
+from api.k8s_client_svc import K8sClientSvc
 
 # 镜像名称
 images = [

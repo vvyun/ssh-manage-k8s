@@ -10,8 +10,18 @@ export const deleteCluster = (clusterId) => api.delete(`/clusters/${clusterId}`)
 
 export const getNamespaces = (clusterId) => api.get(`/clusters/${clusterId}/namespaces`)
 
+export const createNamespace = (clusterId, namespace) => api.post(`/clusters/${clusterId}/namespaces`, { namespace })
+
+export const deleteNamespace = (clusterId, namespace) => api.delete(`/clusters/${clusterId}/namespaces/${namespace}`)
+
 export const getDeployments = (clusterId, namespace) => 
   api.get(`/clusters/${clusterId}/deployments`, { params: { namespace } })
+
+export const getDeploymentDetail = (clusterId, deploymentName, namespace) =>
+  api.get(`/clusters/${clusterId}/deployments/${deploymentName}/detail`, { params: { namespace } })
+
+export const getServiceDetail = (clusterId, serviceName, namespace) =>
+  api.get(`/clusters/${clusterId}/services/${serviceName}/detail`, { params: { namespace } })
 
 export const getServices = (clusterId, namespace) => 
   api.get(`/clusters/${clusterId}/services`, { params: { namespace } })
@@ -43,4 +53,23 @@ export const scaleDeployment = (clusterId, deploymentName, replicas, namespace) 
     { replicas },
     { params: { namespace } }
   )
+
+// 创建Deployment - 表单模式
+export const createDeploymentFromForm = (clusterId, deploymentData, namespace) =>
+  api.post(`/clusters/${clusterId}/deployments`, deploymentData, { params: { namespace } })
+
+// 创建Deployment - YAML模式
+export const createDeploymentFromYaml = (clusterId, yamlContent, namespace) =>
+  api.post(`/clusters/${clusterId}/deployments/yaml`, { yaml: yamlContent }, { params: { namespace } })
+
+// 通用的createDeployment函数，根据参数类型决定使用哪种方式
+export const createDeployment = (clusterId, data, namespace) => {
+  if (data.yaml !== undefined) {
+    // YAML模式
+    return createDeploymentFromYaml(clusterId, data.yaml, namespace);
+  } else {
+    // 表单模式
+    return createDeploymentFromForm(clusterId, data, namespace);
+  }
+}
 

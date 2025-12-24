@@ -22,6 +22,18 @@
       <el-table-column prop="CLUSTER_IP" label="集群IP" width="150" />
       <el-table-column prop="PORTS" label="端口" min-width="200" />
       <el-table-column prop="AGE" label="年龄" width="120" />
+      <el-table-column label="操作" width="100" fixed="right">
+        <template #default="{ row }">
+          <el-button
+            type="primary"
+            size="small"
+            text
+            @click="handleShowServiceDetail(row.NAME)"
+          >
+            详情
+          </el-button>
+        </template>
+      </el-table-column>
     </el-table>
     
     <div class="pagination">
@@ -33,13 +45,30 @@
         layout="total, sizes, prev, pager, next, jumper"
       />
     </div>
+    
+    <!-- 服务详情对话框 -->
+    <el-dialog
+      v-model="showServiceDetailDialog"
+      title="服务详情"
+      width="80%"
+      :destroy-on-close="true"
+    >
+      <div v-loading="serviceDetailLoading">
+        <pre v-if="serviceDetail" class="yaml-content">{{ JSON.stringify(serviceDetail, null, 2) }}</pre>
+        <div v-else class="no-data">暂无服务详情数据</div>
+      </div>
+      <template #footer>
+        <el-button @click="showServiceDetailDialog = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { Search } from '@element-plus/icons-vue'
-import { getServices } from '../api/cluster'
+import { getServices, getServiceDetail } from '../api/cluster'
+import { ElMessage } from 'element-plus'
 
 const props = defineProps({
   clusterId: String,
@@ -51,6 +80,11 @@ const data = ref([])
 const filterText = ref('')
 const currentPage = ref(1)
 const pageSize = ref(10)
+
+// 服务详情相关变量
+const showServiceDetailDialog = ref(false)
+const serviceDetail = ref(null)
+const serviceDetailLoading = ref(false)
 
 const filteredData = computed(() => {
   if (!filterText.value) return data.value
@@ -90,6 +124,28 @@ watch(() => filterText.value, () => {
   currentPage.value = 1
 })
 
+// 获取服务详情
+const handleShowServiceDetail = async (serviceName) => {
+  if (!props.clusterId || !props.namespace) {
+    ElMessage.error('集群或命名空间信息不完整')
+    return
+  }
+  
+  serviceDetailLoading.value = true
+  showServiceDetailDialog.value = true
+  
+  try {
+    const result = await getServiceDetail(props.clusterId, serviceName, props.namespace)
+    serviceDetail.value = result
+  } catch (error) {
+    console.error('获取服务详情失败:', error)
+    ElMessage.error(`获取服务详情失败: ${error.message || error}`)
+    serviceDetail.value = null
+  } finally {
+    serviceDetailLoading.value = false
+  }
+}
+
 // 暴露方法给父组件
 defineExpose({
   loadData
@@ -112,6 +168,26 @@ defineExpose({
   display: flex;
   justify-content: flex-end;
 }
+.yaml-content {
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 15px;
+  max-height: 500px;
+  overflow: auto;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.no-data {
+  text-align: center;
+  color: #999;
+  padding: 20px;
+}
+
 </style>
 
 
