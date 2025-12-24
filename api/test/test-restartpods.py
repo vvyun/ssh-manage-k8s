@@ -2,7 +2,7 @@
 import json
 import os
 
-from k8s_client_svc import K8sClientSvc
+from api.k8s_client_svc import K8sClientSvc
 
 deploy_name = "svc-dict"
 # 命名空间
