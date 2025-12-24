@@ -12,7 +12,7 @@
       label-width="100px"
     >
       <el-form-item label="部署名称">
-        <el-input v-model="deploymentName" disabled />
+        <el-input :value="props.deploymentName" disabled />
       </el-form-item>
       <el-form-item label="镜像名称" prop="image">
         <el-input 
@@ -98,4 +98,5 @@ const handleSubmit = async () => {
   })
 }
 </script>
+
 

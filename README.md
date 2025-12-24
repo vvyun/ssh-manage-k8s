@@ -1,4 +1,4 @@
-# K8s 可视化管理平台
+# KubeYun
 
 基于 Vue 3 + Element Plus + Flask 的 Kubernetes 集群管理平台。
 
@@ -28,7 +28,7 @@ k8s-manage/
 
 ## 功能特性
 
-- ✅ 支持 SSH 和 KUBE (kubeconfig) 两种连接方式
+- ✅ 支持 KUBE (kubeconfig) 和 SSH 两种连接方式
 - ✅ 集群管理（添加、删除、重命名）
 - ✅ 命名空间管理
 - ✅ 工作负载（Deployments）管理
