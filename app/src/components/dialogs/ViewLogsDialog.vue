@@ -37,7 +37,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { Refresh, Download } from '@element-plus/icons-vue'
-import { getPodLogs } from '../api/cluster'
+import { getPodLogs } from '../../api/cluster'
 
 const props = defineProps({
   modelValue: Boolean,

@@ -173,7 +173,7 @@ def create_namespace(cluster_id):
     """创建命名空间"""
     data = request.json
     namespace = data.get('namespace')
-    
+
     client, error_resp = get_cluster_client(cluster_id)
     if error_resp:
         return error_resp
@@ -218,36 +218,32 @@ def get_deployments(cluster_id):
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/api/clusters/<cluster_id>/deployments/<deployment_name>/detail', methods=['GET'])
-def get_deployment_detail(cluster_id, deployment_name):
-    """获取Deployment详情"""
+@app.route('/api/clusters/<cluster_id>/<source_type>/<source_name>/detail', methods=['GET'])
+def get_deployment_detail(cluster_id, source_type, source_name):
     namespace = request.args.get('namespace', 'default')
 
     client, error_resp = get_cluster_client(cluster_id)
     if error_resp:
         return error_resp
-
     try:
-        deployment_detail = client.get_deployment_detail(deployment_name, namespace)
-        return jsonify(deployment_detail)
+        if source_type == 'deployments':
+            _detail_ = client.get_deployment_detail(source_name, namespace)
+        elif source_type == 'services':
+            _detail_ = client.get_service_detail(source_name, namespace)
+        elif source_type == 'configmaps':
+            _detail_ = client.get_configmap_detail(source_name, namespace)
+        elif source_type == 'ingresses':
+            _detail_ = client.get_ingress_detail(source_name, namespace)
+        else:
+            return jsonify({"error": "Source type " + source_type + " not supported"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/clusters/<cluster_id>/services/<service_name>/detail', methods=['GET'])
-def get_service_detail(cluster_id, service_name):
-    """获取Service详情"""
-    namespace = request.args.get('namespace', 'default')
-
-    client, error_resp = get_cluster_client(cluster_id)
-    if error_resp:
-        return error_resp
-
-    try:
-        service_detail = client.get_service_detail(service_name, namespace)
-        return jsonify(service_detail)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    if type(_detail_) == dict:
+        try:
+            _detail_['yaml'] = yaml.dump(_detail_)
+        except Exception as ignore:
+            pass
+    return jsonify(_detail_)
 
 
 @app.route('/api/clusters/<cluster_id>/deployments', methods=['POST'])
@@ -255,11 +251,11 @@ def create_deployment(cluster_id):
     """创建Deployment"""
     namespace = request.args.get('namespace', 'default')
     data = request.json
-    
+
     client, error_resp = get_cluster_client(cluster_id)
     if error_resp:
         return error_resp
-    
+
     try:
         result = client.create_deployment(namespace, data)
         return jsonify({"success": True, "message": result})
@@ -273,14 +269,14 @@ def create_deployment_from_yaml(cluster_id):
     namespace = request.args.get('namespace', 'default')
     data = request.json
     yaml_content = data.get('yaml')
-    
+
     client, error_resp = get_cluster_client(cluster_id)
     if error_resp:
         return error_resp
-    
+
     if not yaml_content:
         return jsonify({"error": "YAML content is required"}), 400
-    
+
     try:
         result = client.create_deployment_from_yaml(namespace, yaml_content)
         return jsonify({"success": True, "message": result})
@@ -316,6 +312,38 @@ def get_pods(cluster_id):
     try:
         pods = client.get_pods(namespace)
         return jsonify(pods)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/clusters/<cluster_id>/configmaps', methods=['GET'])
+def get_configmaps(cluster_id):
+    """获取ConfigMap列表"""
+    namespace = request.args.get('namespace', 'default')
+
+    client, error_resp = get_cluster_client(cluster_id)
+    if error_resp:
+        return error_resp
+
+    try:
+        configmaps = client.get_configmaps(namespace)
+        return jsonify(configmaps)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/clusters/<cluster_id>/ingresses', methods=['GET'])
+def get_ingresses(cluster_id):
+    """获取Ingress列表"""
+    namespace = request.args.get('namespace', 'default')
+
+    client, error_resp = get_cluster_client(cluster_id)
+    if error_resp:
+        return error_resp
+
+    try:
+        ingresses = client.get_ingresses(namespace)
+        return jsonify(ingresses)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -441,18 +469,18 @@ def update_cluster(cluster_id):
     """更新集群信息"""
     data = request.json
     new_name = data.get('name')
-    
+
     if cluster_id not in clusters:
         return jsonify({"error": "Cluster not found"}), 404
-    
+
     if not new_name:
         return jsonify({"error": "Cluster name is required"}), 400
-    
+
     # 更新集群名称
     cluster = clusters[cluster_id]
     old_name = cluster['name']
     cluster['name'] = new_name
-    
+
     # 如果集群ID是根据旧名称生成的，也需要更新
     if cluster_id == old_name:
         new_cluster_id = new_name
@@ -460,7 +488,7 @@ def update_cluster(cluster_id):
         del clusters[cluster_id]
         if cluster_id in clients:
             clients[new_cluster_id] = clients.pop(cluster_id)
-    
+
     # 保存到文件
     if save_clusters(clusters):
         return jsonify({"success": True, "cluster_id": cluster_id})
@@ -480,12 +508,12 @@ def delete_cluster(cluster_id):
     """删除集群"""
     if cluster_id not in clusters:
         return jsonify({"error": "Cluster not found"}), 404
-    
+
     backup_cluster = clusters[cluster_id]
     backup_client = clients.pop(cluster_id, None)
     # 删除集群
     del clusters[cluster_id]
-    
+
     # 保存到文件
     if save_clusters(clusters):
         return jsonify({"success": True})
@@ -499,4 +527,3 @@ def delete_cluster(cluster_id):
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
-

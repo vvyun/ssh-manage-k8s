@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     v-model="dialogVisible"
-    title="容器伸缩"
+    title="更新部署镜像"
     width="500px"
     @close="handleClose"
   >
@@ -9,19 +9,18 @@
       ref="formRef"
       :model="form"
       :rules="rules"
-      label-width="120px"
+      label-width="100px"
     >
       <el-form-item label="部署名称">
-        <el-input v-model="deploymentName" disabled />
+        <el-input :value="props.deploymentName" disabled />
       </el-form-item>
-      <el-form-item label="当前副本数">
-        <el-input v-model="currentReplicas" disabled />
+      <el-form-item label="原镜像名称">
+        <el-input :value="props.deploymentImages" disabled />
       </el-form-item>
-      <el-form-item label="目标副本数" prop="replicas">
-        <el-input-number 
-          v-model="form.replicas" 
-          :min="0"
-          style="width: 100%"
+      <el-form-item label="镜像名称" prop="image">
+        <el-input 
+          v-model="form.image" 
+          placeholder="请输入新的镜像名称"
         />
       </el-form-item>
     </el-form>
@@ -36,15 +35,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { scaleDeployment } from '../api/cluster'
+import { updateDeploymentImage } from '../../api/cluster'
 
 const props = defineProps({
   modelValue: Boolean,
   clusterId: String,
   namespace: String,
-  deployment: [Object, String]
+  deploymentName: String,
+  deploymentImages: String
 })
 
 const emit = defineEmits(['update:modelValue', 'success'])
@@ -53,37 +53,18 @@ const dialogVisible = ref(props.modelValue)
 const formRef = ref()
 const loading = ref(false)
 
-const deploymentName = computed(() => {
-  if (typeof props.deployment === 'string') {
-    return props.deployment
-  }
-  return props.deployment?.NAME || ''
-})
-
-const currentReplicas = computed(() => {
-  if (typeof props.deployment === 'string') {
-    return '0'
-  }
-  const ready = props.deployment?.READY || '0/0'
-  return ready.split('/')[1] || '0'
-})
-
 const form = reactive({
-  replicas: parseInt(currentReplicas.value) || 0
+  image: ''
 })
 
 const rules = {
-  replicas: [
-    { required: true, message: '请输入目标副本数', trigger: 'blur' },
-    { type: 'number', min: 0, message: '副本数必须大于等于0', trigger: 'blur' }
+  image: [
+    { required: true, message: '请输入镜像名称', trigger: 'blur' }
   ]
 }
 
 watch(() => props.modelValue, (val) => {
   dialogVisible.value = val
-  if (val) {
-    form.replicas = parseInt(currentReplicas.value) || 0
-  }
 })
 
 watch(dialogVisible, (val) => {
@@ -93,6 +74,7 @@ watch(dialogVisible, (val) => {
 const handleClose = () => {
   dialogVisible.value = false
   formRef.value?.resetFields()
+  form.image = ''
 }
 
 const handleSubmit = async () => {
@@ -103,17 +85,17 @@ const handleSubmit = async () => {
     
     loading.value = true
     try {
-      await scaleDeployment(
+      await updateDeploymentImage(
         props.clusterId,
-        deploymentName.value,
-        form.replicas,
+        props.deploymentName,
+        form.image,
         props.namespace
       )
-      ElMessage.success(`容器伸缩成功，目标副本数: ${form.replicas}`)
+      ElMessage.success('镜像更新成功')
       emit('success')
       handleClose()
     } catch (error) {
-      ElMessage.error('容器伸缩失败: ' + error.message)
+      ElMessage.error('镜像更新失败: ' + error.message)
     } finally {
       loading.value = false
     }

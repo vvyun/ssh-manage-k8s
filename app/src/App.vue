@@ -1,11 +1,11 @@
 <template>
   <el-container class="app-container">
-    <el-aside width="280px" class="sidebar">
+    <el-aside class="main-sidebar">
       <ClusterSidebar />
     </el-aside>
-    <el-main class="main-content">
+    <el-container class="main-content">
       <router-view />
-    </el-main>
+    </el-container>
   </el-container>
 </template>
 
@@ -15,18 +15,18 @@ import ClusterSidebar from './components/ClusterSidebar.vue'
 
 <style scoped>
 .app-container {
-  height: 100vh;
+  height: 98vh;
+  width: 100%;
+  display: flex;
+  margin: 0;
+  padding: 0;
 }
 
-.sidebar {
-  background: linear-gradient(180deg, #233445 0%, #1c2633 100%);
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+.main-sidebar {
+  height: 100%;
 }
 
 .main-content {
-  background: linear-gradient(180deg, #f7f9fc 0%, #eef2f7 100%);
-  padding: 24px;
+  height: 100%;
 }
 </style>
-
-

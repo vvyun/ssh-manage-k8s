@@ -15,8 +15,8 @@
     >
       <el-form-item label="连接方式" prop="k8s_controller">
         <el-select v-model="form.k8s_controller" style="width: 100%">
-          <el-option label="SSH" value="SSH" />
-          <el-option label="KUBE (kubeconfig)" value="KUBE" />
+          <el-option label="kubeconfig" value="KUBE" />
+          <el-option label="SSH（适用于仅能通过跳板机访问集群）" value="SSH" />
         </el-select>
       </el-form-item>
       
@@ -30,11 +30,11 @@
       
       <!-- SSH 配置 -->
       <template v-if="form.k8s_controller === 'SSH'">
-        <el-divider content-position="left">SSH 认证（适用于仅能通过跳板机访问集群）</el-divider>
+        <el-divider content-position="left">SSH 认证</el-divider>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="SSH主机" prop="ssh_config.hostname">
-              <el-input v-model="form.ssh_config.hostname" placeholder="请输入SSH主机地址" />
+              <el-input v-model="form.ssh_config.hostname" placeholder="请输入主机地址" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -46,7 +46,7 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="SSH用户名" prop="ssh_config.username">
-              <el-input v-model="form.ssh_config.username" placeholder="请输入SSH用户名" />
+              <el-input v-model="form.ssh_config.username" placeholder="请输入用户名" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -54,14 +54,14 @@
               <el-input 
                 v-model="form.ssh_config.password" 
                 type="password" 
-                placeholder="请输入SSH密码（可选）"
+                placeholder="请输入密码（可选）"
                 show-password
               />
             </el-form-item>
           </el-col>
         </el-row>
         <el-form-item label="SSH密钥路径" prop="ssh_config.key_path">
-          <el-input v-model="form.ssh_config.key_path" placeholder="请输入SSH密钥路径（可选）" />
+          <el-input v-model="form.ssh_config.key_path" placeholder="请输入密钥路径（可选）" />
         </el-form-item>
       </template>
       
@@ -89,7 +89,7 @@
 <script setup>
 import { ref, reactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { addCluster } from '../api/cluster'
+import { addCluster } from '../../api/cluster'
 
 const props = defineProps({
   modelValue: Boolean

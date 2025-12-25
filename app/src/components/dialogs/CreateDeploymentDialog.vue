@@ -160,7 +160,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { createDeployment } from '../api/cluster'
+import { createDeployment } from '../../api/cluster'
 
 const props = defineProps({
   modelValue: Boolean,

@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     v-model="dialogVisible"
-    title="更新镜像"
+    title="快速更新镜像"
     width="80%"
     @close="handleClose"
   >
@@ -68,7 +68,7 @@
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Loading } from '@element-plus/icons-vue'
-import { searchDeploymentsByImage, updateDeploymentImage } from '../api/cluster'
+import { searchDeploymentsByImage, updateDeploymentImage } from '../../api/cluster'
 
 const props = defineProps({
   modelValue: Boolean,

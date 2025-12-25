@@ -1,13 +1,13 @@
 <template>
-  <div class="pods-table">
+  <div class="common-table">
     <div class="table-header">
-      <el-input
-        v-model="filterText"
-        placeholder="按名称筛选Pods..."
-        :prefix-icon="Search"
-        clearable
-        style="width: 300px"
-      />
+      <div class="header-content">
+        <el-input v-model="filterText" placeholder="按名称筛选Pods..." :prefix-icon="Search" clearable
+          style="width: 300px" />
+        <!-- <el-button type="primary" @click="showCreateDialog = true" style="margin-left: auto; ">
+          部署Pod
+        </el-button> -->
+      </div>
     </div>
     
     <el-table
@@ -19,7 +19,7 @@
     >
       <el-table-column prop="NAME" label="名称" sortable min-width="200" />
       <el-table-column prop="READY" label="就绪" width="100" />
-      <el-table-column prop="STATUS" label="状态" width="120">
+      <el-table-column prop="STATUS" label="状态" width="100">
         <template #default="{ row }">
           <el-tag 
             :type="getStatusType(row.STATUS)"
@@ -29,9 +29,9 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="RESTARTS" label="重启" width="100" />
-      <el-table-column prop="AGE" label="年龄" width="120" />
-      <el-table-column label="操作" width="180" fixed="right">
+      <el-table-column prop="RESTARTS" label="重启次数" width="100" />
+      <el-table-column prop="AGE" label="运行时长" width="120" />
+      <el-table-column label="操作" width="200" fixed="right">
         <template #default="{ row }">
           <el-button 
             type="primary" 
@@ -75,8 +75,8 @@
 import { ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { getPods, deletePod } from '../api/cluster'
-import ViewLogsDialog from './ViewLogsDialog.vue'
+import { getPods, deletePod } from '../../api/cluster'
+import ViewLogsDialog from '../dialogs/ViewLogsDialog.vue'
 
 const props = defineProps({
   clusterId: String,
@@ -177,7 +177,7 @@ defineExpose({
 </script>
 
 <style scoped>
-.pods-table {
+.common-table {
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -187,10 +187,32 @@ defineExpose({
   margin-bottom: 15px;
 }
 
+.header-content {
+  display: flex;
+  align-items: center;
+}
+
 .pagination {
   margin-top: 15px;
   display: flex;
   justify-content: flex-end;
+}
+
+.yaml-content {
+  max-height: 60vh;
+  overflow: auto;
+  background-color: #f5f5f5;
+  padding: 15px;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.yaml-content pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 </style>
 

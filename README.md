@@ -31,9 +31,11 @@ k8s-manage/
 - ✅ 支持 KUBE (kubeconfig) 和 SSH 两种连接方式
 - ✅ 集群管理（添加、删除、重命名）
 - ✅ 命名空间管理
-- ✅ 工作负载（Deployments）管理
-- ✅ 服务（Services）查看
+- ✅ Deployments 管理
+- ✅ Services 管理
 - ✅ Pods 管理（查看日志、删除）
+- ✅ ConfigMap 管理
+- ✅ Ingress 管理
 - ✅ 镜像更新
 - ✅ 容器伸缩
 - ✅ 批量镜像更新

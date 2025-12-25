@@ -3,90 +3,46 @@
     <div class="sidebar-header">
       <div>
         <h3>集群列表</h3>
-        <p class="sidebar-subtitle">选择集群并进行管理</p>
+        <p class="sidebar-subtitle">点击切换集群并进行管理</p>
       </div>
       <div class="sidebar-actions">
-        <el-button 
-          :icon="Refresh" 
-          circle 
-          size="small"
-          @click="loadClusters"
-          title="刷新集群"
-        />
-        <el-button 
-          :icon="Plus" 
-          circle 
-          type="primary"
-          @click="showAddDialog = true"
-          title="添加集群"
-        />
+        <el-button :icon="Refresh" circle size="medium" @click="loadClusters" title="刷新集群" />
+        <el-button :icon="Plus" circle size="medium" type="primary" @click="showAddDialog = true" title="添加集群" />
       </div>
     </div>
-    
-    <el-input
-      v-model="searchKeyword"
-      placeholder="搜索集群..."
-      :prefix-icon="Search"
-      class="cluster-search"
-      clearable
-    />
-    
-    <el-scrollbar class="cluster-list-scroll">
-      <div v-if="filteredClusters.length === 0" class="empty-state">
-        <p>{{ searchKeyword ? '未找到匹配的集群' : '暂无集群，请先创建一个集群' }}</p>
-        <el-button 
-          :icon="Plus" 
-          type="primary" 
-          circle
-          @click="showAddDialog = true"
-        />
-      </div>
-      <div
-        v-for="cluster in filteredClusters"
-        :key="cluster.name"
-        :class="['cluster-item', { active: currentClusterId === normalizeClusterId(cluster.name) }]"
-        @click="selectCluster(cluster)"
-      >
-        <div class="cluster-avatar">
-          {{ (cluster.name || '?').slice(0, 2).toUpperCase() }}
+
+    <el-input v-model="searchKeyword" placeholder="筛选集群..." :prefix-icon="Search" class="cluster-search" clearable />
+
+    <div class="cluster-list">
+      <el-scrollbar height="200px">
+        <div v-if="filteredClusters.length === 0" class="empty-state">
+          <p>{{ searchKeyword ? '未找到匹配的集群' : '暂无集群，请先创建一个集群' }}</p>
+          <el-button :icon="Plus" type="primary" circle @click="showAddDialog = true" />
         </div>
-        <div class="cluster-info">
-          <div class="cluster-title">{{ cluster.name || '未命名集群' }}</div>
-          <div class="cluster-meta">
-            <el-tag size="small" type="info">{{ cluster.namespace || 'default' }}</el-tag>
+        <div v-for="cluster in filteredClusters" :key="cluster.name"
+          :class="['cluster-item', { active: currentClusterId === normalizeClusterId(cluster.name) }]"
+          @click="selectCluster(cluster)">
+          <div class="cluster-info">
+            <div class="cluster-title">{{ cluster.name || '未命名集群' }}</div>
           </div>
+          <el-dropdown trigger="click" @command="handleCommand">
+            <el-button :icon="MoreFilled" circle size="small" class="actions-btn" @click.stop />
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item :command="{ action: 'rename', cluster }">
+                  重命名
+                </el-dropdown-item>
+                <el-dropdown-item :command="{ action: 'delete', cluster }" divided>
+                  删除
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
-        <el-dropdown trigger="click" @command="handleCommand">
-          <el-button 
-            :icon="MoreFilled" 
-            circle 
-            size="small"
-            class="actions-btn"
-            @click.stop
-          />
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item 
-                :command="{ action: 'rename', cluster }"
-              >
-                重命名
-              </el-dropdown-item>
-              <el-dropdown-item 
-                :command="{ action: 'delete', cluster }"
-                divided
-              >
-                删除
-              </el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-      </div>
-    </el-scrollbar>
-    
-    <AddClusterDialog 
-      v-model="showAddDialog"
-      @success="handleAddSuccess"
-    />
+      </el-scrollbar>
+    </div>
+
+    <AddClusterDialog v-model="showAddDialog" @success="handleAddSuccess" />
   </div>
 </template>
 
@@ -97,7 +53,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Plus, Search, MoreFilled } from '@element-plus/icons-vue'
 import { getClusters, deleteCluster, updateCluster } from '../api/cluster'
-import AddClusterDialog from './AddClusterDialog.vue'
+import AddClusterDialog from './dialogs/AddClusterDialog.vue'
 
 const store = useStore()
 const router = useRouter()
@@ -110,7 +66,7 @@ const currentClusterId = ref(null)
 const filteredClusters = computed(() => {
   if (!searchKeyword.value) return clusters.value
   const keyword = searchKeyword.value.toLowerCase()
-  return clusters.value.filter(c => 
+  return clusters.value.filter(c =>
     c.name && c.name.toLowerCase().includes(keyword)
   )
 })
@@ -124,7 +80,7 @@ const loadClusters = async () => {
     const data = await getClusters()
     clusters.value = Array.isArray(data) ? data : []
     store.commit('SET_CLUSTERS', clusters.value)
-    
+
     // 自动选择第一个集群
     if (clusters.value.length > 0 && !currentClusterId.value) {
       const firstCluster = clusters.value[0]
@@ -155,7 +111,7 @@ const handleCommand = async ({ action, cluster }) => {
         return true
       }
     })
-    
+
     if (value && value.trim() !== cluster.name) {
       try {
         const clusterId = normalizeClusterId(cluster.name)
@@ -177,16 +133,16 @@ const handleCommand = async ({ action, cluster }) => {
           type: 'warning'
         }
       )
-      
+
       const clusterId = normalizeClusterId(cluster.name)
       await deleteCluster(clusterId)
       ElMessage.success('集群删除成功')
-      
+
       if (currentClusterId.value === clusterId) {
         currentClusterId.value = null
         store.commit('SET_CURRENT_CLUSTER', null)
       }
-      
+
       loadClusters()
     } catch (error) {
       if (error !== 'cancel') {
@@ -208,10 +164,7 @@ onMounted(() => {
 <style scoped>
 .cluster-sidebar {
   height: 100%;
-  display: flex;
-  flex-direction: column;
-  padding: 18px;
-  color: white;
+  background: linear-gradient(180deg, #233445 0%, #1c2633 100%);
 }
 
 .sidebar-header {
@@ -219,28 +172,32 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 12px;
+  padding: 12px;
+  margin-bottom: 0px;
 }
 
 .sidebar-header h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
   color: #f3f6f9;
 }
 
 .sidebar-subtitle {
   margin-top: 4px;
-  color: #9fb3c8;
+  color: #dae0e7;
   font-size: 12px;
 }
 
 .sidebar-actions {
   display: flex;
   gap: 8px;
+  padding: 12px;
 }
 
 .cluster-search {
-  margin-bottom: 10px;
+  margin-bottom: 5px;
+  padding-left: 12px;
+  padding-right: 12px;
 }
 
 :deep(.cluster-search .el-input__wrapper) {
@@ -256,9 +213,20 @@ onMounted(() => {
   color: #9fb3c8;
 }
 
-.cluster-list-scroll {
+.cluster-list {
   flex: 1;
-  margin-top: 10px;
+  margin-top: 5px;
+  overflow: auto;
+  padding: 12px;
+}
+
+.cluster-list::-webkit-scrollbar {
+  display: none;
+}
+
+.cluster-list {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .empty-state {
@@ -296,21 +264,7 @@ onMounted(() => {
 .cluster-item.active {
   background: linear-gradient(90deg, rgba(74, 167, 255, 0.2), rgba(52, 152, 219, 0.35));
   border-color: rgba(74, 167, 255, 0.5);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.25);
-}
-
-.cluster-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.14);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #e7eef6;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
 }
 
 .cluster-info {
@@ -328,14 +282,6 @@ onMounted(() => {
   text-overflow: ellipsis;
 }
 
-.cluster-meta {
-  font-size: 12px;
-  color: #9fb3c8;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .actions-btn {
   background-color: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -346,5 +292,3 @@ onMounted(() => {
   background-color: rgba(255, 255, 255, 0.18);
 }
 </style>
-
-
