@@ -36,6 +36,9 @@
             <el-button type="success" @click="showBatchUpdateDialog = true">
               快速更新镜像
             </el-button>
+            <el-button type="primary" @click="showApplyYamlDialog = true">
+              应用YAML
+            </el-button>
             <el-button type="primary" :icon="Refresh" @click="loadCurrentTabData">
               刷新
             </el-button>
@@ -70,6 +73,9 @@
     <!-- 批量更新镜像对话框 -->
     <BatchUpdateImageDialog v-model="showBatchUpdateDialog" :cluster-id="clusterId" :namespace="currentNamespace" />
 
+    <!-- 应用YAML对话框 -->
+    <ApplyYamlDialog v-model="showApplyYamlDialog" :cluster-id="clusterId" :namespace="currentNamespace" />
+
   </div>
 </template>
 
@@ -85,12 +91,14 @@ import PodsTable from '../components/tables/PodsTable.vue'
 import ConfigMapsTable from '../components/tables/ConfigMapsTable.vue'
 import IngressesTable from '../components/tables/IngressesTable.vue'
 import BatchUpdateImageDialog from '../components/dialogs/BatchUpdateImageDialog.vue'
+import ApplyYamlDialog from '../components/dialogs/ApplyYamlDialog.vue'
 
 const store = useStore()
 
 const activeTab = ref('deployments')
 const namespaces = ref([])
 const showBatchUpdateDialog = ref(false)
+const showApplyYamlDialog = ref(false)
 const showCreateNamespaceDialog = ref(false)
 const newNamespaceName = ref('')
 const deploymentsTableRef = ref(null)
