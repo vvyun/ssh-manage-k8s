@@ -10,6 +10,7 @@ services:
       - "5000:5000"
     volumes:
       - ./.clusters.yaml:/app/.clusters.yaml  # 持久化集群配置
+      - ./.crypto.key:/app/.crypto.key    # 持久化加密密钥
       - ./.kube/config:/app/.kube/config  # 持久化Kube配置
       - ./logs:/app/logs  # 持久化日志
     environment:

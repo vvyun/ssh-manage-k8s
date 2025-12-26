@@ -28,17 +28,23 @@ k8s-manage/
 
 ## 功能特性
 
-- ✅ 支持 KUBE (kubeconfig) 和 SSH 两种连接方式
-- ✅ 集群管理（添加、删除、重命名）
-- ✅ 命名空间管理
-- ✅ Deployments 管理
-- ✅ Services 管理
-- ✅ Pods 管理（查看日志、删除）
+- ✅ 集群管理（支持 kubeconfig 和 ssh 两种连接连接集群）
+- ✅ Namespace 管理
+- ✅ Deployment 管理
+- ✅ Service 管理
+- ✅ Pod 管理
 - ✅ ConfigMap 管理
 - ✅ Ingress 管理
-- ✅ 镜像更新
 - ✅ 容器伸缩
-- ✅ 批量镜像更新
+- ✅ 快速更新镜像
+- ✅ 应用YAML功能
+
+## 计划事项
+
+- 📋 用户及权限管理
+- 📋 Secret 管理
+- 📋 StatefulSet 管理
+- 📋 CronJob 管理
 
 ## 安装和运行
 
