@@ -97,3 +97,15 @@ export const createDeployment = (clusterId, data, namespace) => {
   }
 }
 
+// 创建Service
+export const createService = (clusterId, serviceData, namespace) =>
+  api.post(`/clusters/${clusterId}/services`, serviceData, { params: { namespace } })
+
+// 创建ConfigMap
+export const createConfigMap = (clusterId, configMapData, namespace) =>
+  api.post(`/clusters/${clusterId}/configmaps`, configMapData, { params: { namespace } })
+
+// 创建Ingress
+export const createIngress = (clusterId, ingressData, namespace) =>
+  api.post(`/clusters/${clusterId}/ingresses`, ingressData, { params: { namespace } })
+

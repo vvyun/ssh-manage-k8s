@@ -44,6 +44,14 @@
     :resource-name="selectedIngress"
     resource-type="Ingress"
   />
+  
+  <!-- 创建Ingress对话框 -->
+  <CreateIngressDialog
+    v-model="showCreateIngressDialog"
+    :cluster-id="props.clusterId"
+    :namespace="props.namespace"
+    @success="loadData"
+  />
 </template>
 
 <script setup>
@@ -52,6 +60,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import { getIngresses, deleteIngress } from '../../api/cluster'
 import DetailViewDialog from '../dialogs/DetailViewDialog.vue'
+import CreateIngressDialog from '../dialogs/CreateIngressDialog.vue'
 
 const props = defineProps({
   clusterId: {
@@ -109,8 +118,10 @@ const handleCurrentChange = (page) => {
 }
 
 // 处理创建按钮点击
+const showCreateIngressDialog = ref(false)
+
 const handleCreate = () => {
-  ElMessage.info('创建Ingress功能待实现')
+  showCreateIngressDialog.value = true
 }
 
 // 处理查看详情

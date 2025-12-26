@@ -16,20 +16,33 @@
       <el-table-column prop="READY" label="状态" width="80" />
       <el-table-column prop="IMAGES" show-overflow-tooltip label="镜像" />
       <el-table-column prop="AGE" label="运行时长" width="100" />
-      <el-table-column label="操作" width="280" fixed="right">
+      <el-table-column label="操作" width="100" fixed="right">
         <template #default="{ row }">
-          <el-button type="primary" size="small" title="更新Deployment" @click="handleUpdateImage(row.NAME, row.IMAGES)">
-            升级
-          </el-button>
-          <el-button type="warning" size="small" @click="handleScale(row)">
-            伸缩
-          </el-button>
-          <el-button type="info" size="small" @click="handleShowDetail(row.NAME)">
-            详情
-          </el-button>
-          <el-button type="danger" size="small" @click="handleDelete(row.NAME)">
-            删除
-          </el-button>
+          <el-dropdown trigger="click">
+            <span class="el-dropdown-link">
+               ...
+              <!-- <el-icon class="el-icon--right">
+                <arrow-down />
+              </el-icon> -->
+            </span>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item>
+                  <el-button type="primary" size="small" title="更新Deployment"
+                    @click="handleUpdateImage(row.NAME, row.IMAGES)">升级</el-button>
+                </el-dropdown-item>
+                <el-dropdown-item>
+                  <el-button type="warning" size="small" @click="handleScale(row)">伸缩</el-button>
+                </el-dropdown-item>
+                <el-dropdown-item>
+                  <el-button type="info" size="small" @click="handleShowDetail(row.NAME)">详情 </el-button>
+                </el-dropdown-item>
+                <el-dropdown-item>
+                  <el-button type="danger" size="small" @click="handleDelete(row.NAME)">删除</el-button>
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </template>
       </el-table-column>
     </el-table>
@@ -48,13 +61,8 @@
       :deployment="selectedDeployment" @success="loadData" />
 
     <!-- 详情对话框 -->
-    <DetailViewDialog
-      v-model="showDetailDialog"
-      :cluster-id="props.clusterId"
-      :namespace="props.namespace"
-      :resource-name="selectedDeployment"
-      resource-type="Deployment"
-    />
+    <DetailViewDialog v-model="showDetailDialog" :cluster-id="props.clusterId" :namespace="props.namespace"
+      :resource-name="selectedDeployment" resource-type="Deployment" />
 
     <!-- 创建Deployment对话框 -->
     <CreateDeploymentDialog v-model="showCreateDialog" :cluster-id="props.clusterId" :namespace="props.namespace"
@@ -65,7 +73,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search } from '@element-plus/icons-vue'
+import { Search, ArrowDown } from '@element-plus/icons-vue'
 import { getDeployments, deleteDeployment } from '../../api/cluster'
 import UpdateImageDialog from '../dialogs/UpdateImageDialog.vue'
 import ScaleDeploymentDialog from '../dialogs/ScaleDeploymentDialog.vue'
@@ -148,7 +156,7 @@ const handleDelete = async (deploymentName) => {
         type: 'warning',
       }
     )
-    
+
     await deleteDeployment(props.clusterId, deploymentName, props.namespace)
     ElMessage.success('删除成功')
     loadData() // 重新加载数据
@@ -211,5 +219,12 @@ defineExpose({
   margin: 0;
   white-space: pre-wrap;
   word-wrap: break-word;
+}
+
+.example-showcase .el-dropdown-link {
+  cursor: pointer;
+  color: var(--el-color-primary);
+  display: flex;
+  align-items: center;
 }
 </style>

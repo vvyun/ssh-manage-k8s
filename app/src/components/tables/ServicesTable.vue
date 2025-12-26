@@ -42,6 +42,14 @@
       :resource-name="selectedService"
       resource-type="Service"
     />
+    
+    <!-- 创建Service对话框 -->
+    <CreateServiceDialog
+      v-model="showCreateServiceDialog"
+      :cluster-id="props.clusterId"
+      :namespace="props.namespace"
+      @success="loadData"
+    />
   </div>
 </template>
 
@@ -51,6 +59,7 @@ import { Search } from '@element-plus/icons-vue'
 import { getServices, deleteService } from '../../api/cluster'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import DetailViewDialog from '../dialogs/DetailViewDialog.vue'
+import CreateServiceDialog from '../dialogs/CreateServiceDialog.vue'
 
 const props = defineProps({
   clusterId: String,
@@ -110,8 +119,10 @@ const handleShowServiceDetail = (serviceName) => {
 }
 
 // 处理创建按钮点击
+const showCreateServiceDialog = ref(false)
+
 const handleCreate = () => {
-  ElMessage.info('创建Service功能待实现')
+  showCreateServiceDialog.value = true
 }
 
 const handleDelete = async (serviceName) => {

@@ -300,6 +300,57 @@ def get_services(cluster_id):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/clusters/<cluster_id>/services', methods=['POST'])
+def create_service(cluster_id):
+    """创建Service"""
+    namespace = request.args.get('namespace', 'default')
+    data = request.json
+
+    client, error_resp = get_cluster_client(cluster_id)
+    if error_resp:
+        return error_resp
+
+    try:
+        result = client.create_service(namespace, data)
+        return jsonify({"success": True, "message": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/clusters/<cluster_id>/configmaps', methods=['POST'])
+def create_configmap(cluster_id):
+    """创建ConfigMap"""
+    namespace = request.args.get('namespace', 'default')
+    data = request.json
+
+    client, error_resp = get_cluster_client(cluster_id)
+    if error_resp:
+        return error_resp
+
+    try:
+        result = client.create_configmap(namespace, data)
+        return jsonify({"success": True, "message": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/clusters/<cluster_id>/ingresses', methods=['POST'])
+def create_ingress(cluster_id):
+    """创建Ingress"""
+    namespace = request.args.get('namespace', 'default')
+    data = request.json
+
+    client, error_resp = get_cluster_client(cluster_id)
+    if error_resp:
+        return error_resp
+
+    try:
+        result = client.create_ingress(namespace, data)
+        return jsonify({"success": True, "message": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/clusters/<cluster_id>/pods', methods=['GET'])
 def get_pods(cluster_id):
     """获取Pod列表"""

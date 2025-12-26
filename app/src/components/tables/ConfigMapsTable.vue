@@ -42,6 +42,14 @@
     :resource-name="selectedConfigMap"
     resource-type="ConfigMap"
   />
+  
+  <!-- 创建ConfigMap对话框 -->
+  <CreateConfigMapDialog
+    v-model="showCreateConfigMapDialog"
+    :cluster-id="props.clusterId"
+    :namespace="props.namespace"
+    @success="loadData"
+  />
 </template>
 
 <script setup>
@@ -50,6 +58,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import { getConfigmaps, deleteConfigMap } from '../../api/cluster'
 import DetailViewDialog from '../dialogs/DetailViewDialog.vue'
+import CreateConfigMapDialog from '../dialogs/CreateConfigMapDialog.vue'
 
 const props = defineProps({
   clusterId: {
@@ -107,8 +116,10 @@ const handleCurrentChange = (page) => {
 }
 
 // 处理创建按钮点击
+const showCreateConfigMapDialog = ref(false)
+
 const handleCreate = () => {
-  ElMessage.info('创建ConfigMap功能待实现')
+  showCreateConfigMapDialog.value = true
 }
 
 // 处理查看详情

@@ -13,11 +13,11 @@ from ssh_client import SSHClient
 class K8sClientSvc:
 
     def __init__(
-            self,
-            namespace="default",
-            k8s_controller="KUBE",  # 操作方式
-            ssh_config=None,
-            kube_config=None,
+        self,
+        namespace="default",
+        k8s_controller="KUBE",  # 操作方式
+        ssh_config=None,
+        kube_config=None,
     ):
         self.namespace = namespace
         self.k8s_controller = k8s_controller
@@ -88,7 +88,9 @@ class K8sClientSvc:
             raise Exception("pod_name 非空")
         return self.client.delete_pod(ns, pod_name)
 
-    def update_deployment_image(self, ns: str = None, deploy_name: str = None, image: str = None) -> str:
+    def update_deployment_image(
+        self, ns: str = None, deploy_name: str = None, image: str = None
+    ) -> str:
         if ns is None:
             ns = self.namespace
         if not deploy_name:
@@ -102,7 +104,9 @@ class K8sClientSvc:
             ns = self.namespace
         return self.client.get_deployment_images(ns)
 
-    def scale_deployment(self, ns: str = None, deploy_name: str = None, replicas: int = None) -> str:
+    def scale_deployment(
+        self, ns: str = None, deploy_name: str = None, replicas: int = None
+    ) -> str:
         """
         伸缩容器副本数
         """
@@ -156,11 +160,23 @@ class K8sClientSvc:
         """
         return self.client.create_deployment(ns, deployment_data)
 
-    def create_deployment_from_yaml(self, ns: str, yaml_content: str) -> str:
+    def create_service(self, ns: str, service_data: dict) -> str:
         """
-        从YAML创建Deployment
+        创建Service
         """
-        return self.client.create_deployment_from_yaml(ns, yaml_content)
+        return self.client.create_service(ns, service_data)
+
+    def create_configmap(self, ns: str, configmap_data: dict) -> str:
+        """
+        创建ConfigMap
+        """
+        return self.client.create_configmap(ns, configmap_data)
+
+    def create_ingress(self, ns: str, ingress_data: dict) -> str:
+        """
+        创建Ingress
+        """
+        return self.client.create_ingress(ns, ingress_data)
 
     def get_configmap_detail(self, ns: str, configmap_name: str) -> dict:
         """
@@ -214,6 +230,7 @@ class K8sClientSvc:
             raise Exception("namespace 非空")
         return self.client.delete_ingress(ingress_name, ns)
 
+
 def convert2map(res: dict) -> list[dict]:
     if not res["success"]:
         return []
@@ -258,7 +275,10 @@ class SshK8sClient:
     def re_connect_if_disconnect(self, method_name):
         # print(method_name)
         res = self.ssh_client.execute_command("echo 'hello world'")
-        if not res.get('success', False) and res.get('error', '') == 'SSH session not active':
+        if (
+            not res.get("success", False)
+            and res.get("error", "") == "SSH session not active"
+        ):
             self.ssh_client.connect()
 
     @re_connect_if_disconnect_decorator
@@ -277,7 +297,9 @@ class SshK8sClient:
         """
         获取部署
         """
-        result = self.ssh_client.execute_command(f"kubectl get deployments -n {ns} -o wide")
+        result = self.ssh_client.execute_command(
+            f"kubectl get deployments -n {ns} -o wide"
+        )
         return convert2map(result)
 
     @re_connect_if_disconnect_decorator
@@ -326,7 +348,9 @@ class SshK8sClient:
         return result["output"]
 
     @re_connect_if_disconnect_decorator
-    def update_deployment_image(self, ns: str = None, deploy_name: str = None, image: str = None) -> str:
+    def update_deployment_image(
+        self, ns: str = None, deploy_name: str = None, image: str = None
+    ) -> str:
         shell_cmd = f"""kubectl set image deployment/{deploy_name} {deploy_name}={image} -n {ns}"""
         result = self.ssh_client.execute_command(shell_cmd)
         return result["output"]
@@ -338,11 +362,15 @@ class SshK8sClient:
         return convert2map(result)
 
     @re_connect_if_disconnect_decorator
-    def scale_deployment(self, ns: str = None, deploy_name: str = None, replicas: int = None) -> str:
+    def scale_deployment(
+        self, ns: str = None, deploy_name: str = None, replicas: int = None
+    ) -> str:
         """
         伸缩容器副本数
         """
-        shell_cmd = f"""kubectl scale deployment/{deploy_name} --replicas={replicas} -n {ns}"""
+        shell_cmd = (
+            f"""kubectl scale deployment/{deploy_name} --replicas={replicas} -n {ns}"""
+        )
         result = self.ssh_client.execute_command(shell_cmd)
         return result["output"]
 
@@ -353,16 +381,18 @@ class SshK8sClient:
         """
         if not ns:
             raise Exception("namespace name 非空")
-        
+
         # 检查命名空间是否已存在
         result = self.ssh_client.execute_command(f"kubectl get namespace {ns}")
-        if result.get('success', False):
+        if result.get("success", False):
             raise Exception(f"命名空间 {ns} 已存在")
-        
+
         # 创建命名空间
         result = self.ssh_client.execute_command(f"kubectl create namespace {ns}")
-        if not result.get('success', False):
-            raise Exception(f"创建命名空间 {ns} 失败: {result.get('error', 'Unknown error')}")
+        if not result.get("success", False):
+            raise Exception(
+                f"创建命名空间 {ns} 失败: {result.get('error', 'Unknown error')}"
+            )
         return f"命名空间 {ns} 创建成功"
 
     @re_connect_if_disconnect_decorator
@@ -372,16 +402,18 @@ class SshK8sClient:
         """
         if not ns:
             raise Exception("namespace name 非空")
-        
+
         # 检查命名空间是否存在
         result = self.ssh_client.execute_command(f"kubectl get namespace {ns}")
-        if not result.get('success', False):
+        if not result.get("success", False):
             raise Exception(f"命名空间 {ns} 不存在")
-        
+
         # 删除命名空间
         result = self.ssh_client.execute_command(f"kubectl delete namespace {ns}")
-        if not result.get('success', False):
-            raise Exception(f"删除命名空间 {ns} 失败: {result.get('error', 'Unknown error')}")
+        if not result.get("success", False):
+            raise Exception(
+                f"删除命名空间 {ns} 失败: {result.get('error', 'Unknown error')}"
+            )
         return f"命名空间 {ns} 删除成功"
 
     @re_connect_if_disconnect_decorator
@@ -393,13 +425,17 @@ class SshK8sClient:
             raise Exception("deploy_name 非空")
         if not ns:
             raise Exception("namespace 非空")
-        
+
         # 使用kubectl获取Deployment的YAML格式详情
-        result = self.ssh_client.execute_command(f"kubectl get deployment {deploy_name} -n {ns} -o yaml")
-        if not result.get('success', False):
-            raise Exception(f"获取Deployment {deploy_name} 详情失败: {result.get('error', 'Unknown error')}")
-        
-        deployment_yaml = yaml.safe_load(result['output'])
+        result = self.ssh_client.execute_command(
+            f"kubectl get deployment {deploy_name} -n {ns} -o yaml"
+        )
+        if not result.get("success", False):
+            raise Exception(
+                f"获取Deployment {deploy_name} 详情失败: {result.get('error', 'Unknown error')}"
+            )
+
+        deployment_yaml = yaml.safe_load(result["output"])
         return deployment_yaml
 
     @re_connect_if_disconnect_decorator
@@ -411,13 +447,17 @@ class SshK8sClient:
             raise Exception("service_name 非空")
         if not ns:
             raise Exception("namespace 非空")
-        
+
         # 使用kubectl获取Service的YAML格式详情
-        result = self.ssh_client.execute_command(f"kubectl get service {service_name} -n {ns} -o yaml")
-        if not result.get('success', False):
-            raise Exception(f"获取Service {service_name} 详情失败: {result.get('error', 'Unknown error')}")
-        
-        service_yaml = yaml.safe_load(result['output'])
+        result = self.ssh_client.execute_command(
+            f"kubectl get service {service_name} -n {ns} -o yaml"
+        )
+        if not result.get("success", False):
+            raise Exception(
+                f"获取Service {service_name} 详情失败: {result.get('error', 'Unknown error')}"
+            )
+
+        service_yaml = yaml.safe_load(result["output"])
         return service_yaml
 
     @re_connect_if_disconnect_decorator
@@ -429,13 +469,17 @@ class SshK8sClient:
             raise Exception("configmap_name 非空")
         if not ns:
             raise Exception("namespace 非空")
-        
+
         # 使用kubectl获取ConfigMap的YAML格式详情
-        result = self.ssh_client.execute_command(f"kubectl get configmap {configmap_name} -n {ns} -o yaml")
-        if not result.get('success', False):
-            raise Exception(f"获取ConfigMap {configmap_name} 详情失败: {result.get('error', 'Unknown error')}")
-        
-        configmap_yaml = yaml.safe_load(result['output'])
+        result = self.ssh_client.execute_command(
+            f"kubectl get configmap {configmap_name} -n {ns} -o yaml"
+        )
+        if not result.get("success", False):
+            raise Exception(
+                f"获取ConfigMap {configmap_name} 详情失败: {result.get('error', 'Unknown error')}"
+            )
+
+        configmap_yaml = yaml.safe_load(result["output"])
         return configmap_yaml
 
     @re_connect_if_disconnect_decorator
@@ -447,13 +491,17 @@ class SshK8sClient:
             raise Exception("ingress_name 非空")
         if not ns:
             raise Exception("namespace 非空")
-        
+
         # 使用kubectl获取Ingress的YAML格式详情
-        result = self.ssh_client.execute_command(f"kubectl get ingress {ingress_name} -n {ns} -o yaml")
-        if not result.get('success', False):
-            raise Exception(f"获取Ingress {ingress_name} 详情失败: {result.get('error', 'Unknown error')}")
-        
-        ingress_yaml = yaml.safe_load(result['output'])
+        result = self.ssh_client.execute_command(
+            f"kubectl get ingress {ingress_name} -n {ns} -o yaml"
+        )
+        if not result.get("success", False):
+            raise Exception(
+                f"获取Ingress {ingress_name} 详情失败: {result.get('error', 'Unknown error')}"
+            )
+
+        ingress_yaml = yaml.safe_load(result["output"])
         return ingress_yaml
 
     @re_connect_if_disconnect_decorator
@@ -465,13 +513,17 @@ class SshK8sClient:
             raise Exception("deploy_name 非空")
         if not ns:
             raise Exception("namespace 非空")
-        
+
         # 使用kubectl删除Deployment
-        result = self.ssh_client.execute_command(f"kubectl delete deployment {deploy_name} -n {ns}")
-        if not result.get('success', False):
-            raise Exception(f"删除Deployment {deploy_name} 失败: {result.get('error', 'Unknown error')}")
-        
-        return result['output']
+        result = self.ssh_client.execute_command(
+            f"kubectl delete deployment {deploy_name} -n {ns}"
+        )
+        if not result.get("success", False):
+            raise Exception(
+                f"删除Deployment {deploy_name} 失败: {result.get('error', 'Unknown error')}"
+            )
+
+        return result["output"]
 
     @re_connect_if_disconnect_decorator
     def delete_service(self, service_name: str, ns: str) -> str:
@@ -482,13 +534,17 @@ class SshK8sClient:
             raise Exception("service_name 非空")
         if not ns:
             raise Exception("namespace 非空")
-        
+
         # 使用kubectl删除Service
-        result = self.ssh_client.execute_command(f"kubectl delete service {service_name} -n {ns}")
-        if not result.get('success', False):
-            raise Exception(f"删除Service {service_name} 失败: {result.get('error', 'Unknown error')}")
-        
-        return result['output']
+        result = self.ssh_client.execute_command(
+            f"kubectl delete service {service_name} -n {ns}"
+        )
+        if not result.get("success", False):
+            raise Exception(
+                f"删除Service {service_name} 失败: {result.get('error', 'Unknown error')}"
+            )
+
+        return result["output"]
 
     @re_connect_if_disconnect_decorator
     def delete_configmap(self, configmap_name: str, ns: str) -> str:
@@ -499,13 +555,17 @@ class SshK8sClient:
             raise Exception("configmap_name 非空")
         if not ns:
             raise Exception("namespace 非空")
-        
+
         # 使用kubectl删除ConfigMap
-        result = self.ssh_client.execute_command(f"kubectl delete configmap {configmap_name} -n {ns}")
-        if not result.get('success', False):
-            raise Exception(f"删除ConfigMap {configmap_name} 失败: {result.get('error', 'Unknown error')}")
-        
-        return result['output']
+        result = self.ssh_client.execute_command(
+            f"kubectl delete configmap {configmap_name} -n {ns}"
+        )
+        if not result.get("success", False):
+            raise Exception(
+                f"删除ConfigMap {configmap_name} 失败: {result.get('error', 'Unknown error')}"
+            )
+
+        return result["output"]
 
     @re_connect_if_disconnect_decorator
     def delete_ingress(self, ingress_name: str, ns: str) -> str:
@@ -516,13 +576,113 @@ class SshK8sClient:
             raise Exception("ingress_name 非空")
         if not ns:
             raise Exception("namespace 非空")
-        
+
         # 使用kubectl删除Ingress
-        result = self.ssh_client.execute_command(f"kubectl delete ingress {ingress_name} -n {ns}")
-        if not result.get('success', False):
-            raise Exception(f"删除Ingress {ingress_name} 失败: {result.get('error', 'Unknown error')}")
-        
-        return result['output']
+        result = self.ssh_client.execute_command(
+            f"kubectl delete ingress {ingress_name} -n {ns}"
+        )
+        if not result.get("success", False):
+            raise Exception(
+                f"删除Ingress {ingress_name} 失败: {result.get('error', 'Unknown error')}"
+            )
+
+        return result["output"]
+
+    @re_connect_if_disconnect_decorator
+    def create_service(self, ns: str, service_data: dict) -> str:
+        """
+        创建Service - 通过表单数据
+        """
+        import tempfile
+        import os
+
+        # 构建Service YAML内容
+        service_yaml = self._build_service_yaml(service_data)
+        # 替换YAML中的占位符命名空间
+        service_yaml = service_yaml.replace("PLACEHOLDER_NAMESPACE", ns)
+
+        # 创建临时文件
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(service_yaml)
+            temp_file_path = f.name
+
+        try:
+            # 使用kubectl apply创建Service
+            result = self.ssh_client.execute_command(
+                f"kubectl apply -f {temp_file_path} -n {ns}"
+            )
+            if not result.get("success", False):
+                raise Exception(
+                    f"创建Service失败: {result.get('error', 'Unknown error')}"
+                )
+            return result["output"]
+        finally:
+            # 清理临时文件
+            os.unlink(temp_file_path)
+
+    @re_connect_if_disconnect_decorator
+    def create_configmap(self, ns: str, configmap_data: dict) -> str:
+        """
+        创建ConfigMap - 通过表单数据
+        """
+        import tempfile
+        import os
+
+        # 构建ConfigMap YAML内容
+        configmap_yaml = self._build_configmap_yaml(configmap_data)
+        # 替换YAML中的占位符命名空间
+        configmap_yaml = configmap_yaml.replace("PLACEHOLDER_NAMESPACE", ns)
+
+        # 创建临时文件
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(configmap_yaml)
+            temp_file_path = f.name
+
+        try:
+            # 使用kubectl apply创建ConfigMap
+            result = self.ssh_client.execute_command(
+                f"kubectl apply -f {temp_file_path} -n {ns}"
+            )
+            if not result.get("success", False):
+                raise Exception(
+                    f"创建ConfigMap失败: {result.get('error', 'Unknown error')}"
+                )
+            return result["output"]
+        finally:
+            # 清理临时文件
+            os.unlink(temp_file_path)
+
+    @re_connect_if_disconnect_decorator
+    def create_ingress(self, ns: str, ingress_data: dict) -> str:
+        """
+        创建Ingress - 通过表单数据
+        """
+        import tempfile
+        import os
+
+        # 构建Ingress YAML内容
+        ingress_yaml = self._build_ingress_yaml(ingress_data)
+        # 替换YAML中的占位符命名空间
+        ingress_yaml = ingress_yaml.replace("PLACEHOLDER_NAMESPACE", ns)
+
+        # 创建临时文件
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(ingress_yaml)
+            temp_file_path = f.name
+
+        try:
+            # 使用kubectl apply创建Ingress
+            result = self.ssh_client.execute_command(
+                f"kubectl apply -f {temp_file_path} -n {ns}"
+            )
+            if not result.get("success", False):
+                raise Exception(
+                    f"创建Ingress失败: {result.get('error', 'Unknown error')}"
+                )
+            return result["output"]
+        finally:
+            # 清理临时文件
+            os.unlink(temp_file_path)
 
     @re_connect_if_disconnect_decorator
     def create_deployment(self, ns: str, deployment_data: dict) -> str:
@@ -531,74 +691,159 @@ class SshK8sClient:
         """
         import tempfile
         import os
-        
+
         # 构建Deployment YAML内容
         deployment_yaml = self._build_deployment_yaml(deployment_data)
         # 替换YAML中的占位符命名空间
-        deployment_yaml = deployment_yaml.replace('PLACEHOLDER_NAMESPACE', ns)
-        
+        deployment_yaml = deployment_yaml.replace("PLACEHOLDER_NAMESPACE", ns)
+
         # 创建临时文件
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(deployment_yaml)
             temp_file_path = f.name
-        
+
         try:
             # 使用kubectl apply创建Deployment
-            result = self.ssh_client.execute_command(f"kubectl apply -f {temp_file_path} -n {ns}")
-            if not result.get('success', False):
-                raise Exception(f"创建Deployment失败: {result.get('error', 'Unknown error')}")
-            return result['output']
+            result = self.ssh_client.execute_command(
+                f"kubectl apply -f {temp_file_path} -n {ns}"
+            )
+            if not result.get("success", False):
+                raise Exception(
+                    f"创建Deployment失败: {result.get('error', 'Unknown error')}"
+                )
+            return result["output"]
         finally:
             # 清理临时文件
             os.unlink(temp_file_path)
 
-    def create_deployment_from_yaml(self, ns: str, yaml_content: str) -> str:
+    def _build_service_yaml(self, service_data: dict) -> str:
         """
-        从YAML内容创建Deployment
+        根据表单数据构建Service YAML
         """
-        import tempfile
-        import os
-        import yaml as yaml_lib
-        
-        # 解析YAML内容，修改命名空间，然后重新序列化
-        try:
-            yaml_dict = yaml_lib.safe_load(yaml_content)
-            if 'metadata' in yaml_dict and yaml_dict.get('kind') == 'Deployment':
-                yaml_dict['metadata']['namespace'] = ns
-            yaml_content = yaml_lib.dump(yaml_dict, default_flow_style=False, allow_unicode=True)
-        except Exception as e:
-            # 如果YAML解析失败，使用字符串替换作为备选方案
-            yaml_content = yaml_content.replace('namespace: default', f'namespace: {ns}')
-            yaml_content = yaml_content.replace('namespace: PLACEHOLDER_NAMESPACE', f'namespace: {ns}')
-        
-        # 创建临时文件
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            f.write(yaml_content)
-            temp_file_path = f.name
-        
-        try:
-            # 使用kubectl apply创建Deployment
-            result = self.ssh_client.execute_command(f"kubectl apply -f {temp_file_path} -n {ns}")
-            if not result.get('success', False):
-                raise Exception(f"创建Deployment失败: {result.get('error', 'Unknown error')}")
-            return result['output']
-        finally:
-            # 清理临时文件
-            os.unlink(temp_file_path)
+        name = service_data.get("name", "default-service")
+        service_type = service_data.get("type", "ClusterIP")
+        selector = service_data.get("selector", {})
+        ports = service_data.get("ports", [])
+
+        # 构建Service对象
+        service = {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "name": name,
+                "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
+                "labels": {"app": name},
+            },
+            "spec": {"type": service_type, "selector": selector, "ports": []},
+        }
+
+        # 添加端口配置
+        if ports:
+            for port in ports:
+                port_config = {
+                    "port": int(port.get("port", 80)),
+                    "targetPort": int(port.get("targetPort", port.get("port", 80))),
+                    "protocol": port.get("protocol", "TCP"),
+                }
+                # 添加可选字段
+                if port.get("name"):
+                    port_config["name"] = port["name"]
+                if port.get("nodePort") and service_type == "NodePort":
+                    port_config["nodePort"] = int(port["nodePort"])
+                service["spec"]["ports"].append(port_config)
+        else:
+            # 如果没有定义端口，则添加默认端口配置
+            service["spec"]["ports"].append(
+                {"port": 80, "targetPort": 80, "protocol": "TCP"}
+            )
+
+        # 转换为YAML格式
+        return yaml.dump(service, default_flow_style=False, allow_unicode=True)
+
+    def _build_configmap_yaml(self, configmap_data: dict) -> str:
+        """
+        根据表单数据构建ConfigMap YAML
+        """
+        name = configmap_data.get("name", "default-configmap")
+        data = configmap_data.get("data", {})
+
+        # 构建ConfigMap对象
+        configmap = {
+            "apiVersion": "v1",
+            "kind": "ConfigMap",
+            "metadata": {
+                "name": name,
+                "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
+                "labels": {"app": name},
+            },
+            "data": data,
+        }
+
+        # 转换为YAML格式
+        return yaml.dump(configmap, default_flow_style=False, allow_unicode=True)
+
+    def _build_ingress_yaml(self, ingress_data: dict) -> str:
+        """
+        根据表单数据构建Ingress YAML
+        """
+        name = ingress_data.get("name", "default-ingress")
+        ingress_class_name = ingress_data.get("ingressClassName", "nginx")
+        rules = ingress_data.get("rules", [])
+
+        # 构建Ingress对象
+        ingress = {
+            "apiVersion": "networking.k8s.io/v1",
+            "kind": "Ingress",
+            "metadata": {
+                "name": name,
+                "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
+                "labels": {"app": name},
+            },
+            "spec": {},
+        }
+
+        # 添加Ingress类名
+        if ingress_class_name:
+            ingress["spec"]["ingressClassName"] = ingress_class_name
+
+        # 添加规则
+        if rules:
+            ingress["spec"]["rules"] = []
+            for rule in rules:
+                ingress_rule = {"host": rule.get("host", ""), "http": {"paths": []}}
+
+                paths = rule.get("paths", [])
+                for path in paths:
+                    path_config = {
+                        "path": path.get("path", "/"),
+                        "pathType": path.get("pathType", "Prefix"),
+                        "backend": {
+                            "service": {
+                                "name": path.get("serviceName", ""),
+                                "port": {"number": int(path.get("servicePort", 80))},
+                            }
+                        },
+                    }
+                    ingress_rule["http"]["paths"].append(path_config)
+
+                ingress["spec"]["rules"].append(ingress_rule)
+
+        # 转换为YAML格式
+        return yaml.dump(ingress, default_flow_style=False, allow_unicode=True)
 
     def _build_deployment_yaml(self, deployment_data: dict) -> str:
         """
         根据表单数据构建Deployment YAML
         """
-        
-        name = deployment_data.get('name', 'default-deployment')
-        image = deployment_data.get('image', 'nginx:latest')
-        replicas = deployment_data.get('replicas', 1)
+
+        name = deployment_data.get("name", "default-deployment")
+        image = deployment_data.get("image", "nginx:latest")
+        replicas = deployment_data.get("replicas", 1)
         # 注意：命名空间由调用方法传入，而不是从deployment_data中获取
-        ports = deployment_data.get('ports', [])
-        env = deployment_data.get('env', [])
-        volumes = deployment_data.get('volumes', [])
-        
+        ports = deployment_data.get("ports", [])
+        env = deployment_data.get("env", [])
+        volumes = deployment_data.get("volumes", [])
+
         # 构建Deployment对象
         deployment = {
             "apiVersion": "apps/v1",
@@ -606,23 +851,13 @@ class SshK8sClient:
             "metadata": {
                 "name": name,
                 "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
-                "labels": {
-                    "app": name
-                }
+                "labels": {"app": name},
             },
             "spec": {
                 "replicas": replicas,
-                "selector": {
-                    "matchLabels": {
-                        "app": name
-                    }
-                },
+                "selector": {"matchLabels": {"app": name}},
                 "template": {
-                    "metadata": {
-                        "labels": {
-                            "app": name
-                        }
-                    },
+                    "metadata": {"labels": {"app": name}},
                     "spec": {
                         "containers": [
                             {
@@ -630,56 +865,58 @@ class SshK8sClient:
                                 "image": image,
                             }
                         ]
-                    }
-                }
-            }
+                    },
+                },
+            },
         }
-        
+
         # 添加端口配置
         if ports:
-            container = deployment['spec']['template']['spec']['containers'][0]
-            container['ports'] = []
+            container = deployment["spec"]["template"]["spec"]["containers"][0]
+            container["ports"] = []
             for port in ports:
-                if port.get('containerPort'):
-                    container['ports'].append({
-                        "containerPort": int(port['containerPort']),
-                        "protocol": port.get('protocol', 'TCP')
-                    })
-        
+                if port.get("containerPort"):
+                    container["ports"].append(
+                        {
+                            "containerPort": int(port["containerPort"]),
+                            "protocol": port.get("protocol", "TCP"),
+                        }
+                    )
+
         # 添加环境变量
         if env:
-            container = deployment['spec']['template']['spec']['containers'][0]
-            container['env'] = []
+            container = deployment["spec"]["template"]["spec"]["containers"][0]
+            container["env"] = []
             for env_var in env:
-                if env_var.get('name') and env_var.get('value'):
-                    container['env'].append({
-                        "name": env_var['name'],
-                        "value": env_var['value']
-                    })
-        
+                if env_var.get("name") and env_var.get("value"):
+                    container["env"].append(
+                        {"name": env_var["name"], "value": env_var["value"]}
+                    )
+
         # 添加卷挂载
         if volumes:
-            container = deployment['spec']['template']['spec']['containers'][0]
-            container['volumeMounts'] = []
-            deployment['spec']['template']['spec']['volumes'] = []
-            
+            container = deployment["spec"]["template"]["spec"]["containers"][0]
+            container["volumeMounts"] = []
+            deployment["spec"]["template"]["spec"]["volumes"] = []
+
             for i, volume in enumerate(volumes):
-                if volume.get('name') and volume.get('mountPath'):
+                if volume.get("name") and volume.get("mountPath"):
                     # 卷挂载
-                    container['volumeMounts'].append({
-                        "name": volume['name'],
-                        "mountPath": volume['mountPath']
-                    })
-                    
+                    container["volumeMounts"].append(
+                        {"name": volume["name"], "mountPath": volume["mountPath"]}
+                    )
+
                     # 卷定义
-                    deployment['spec']['template']['spec']['volumes'].append({
-                        "name": volume['name'],
-                        "hostPath": {
-                            "path": volume.get('volumePath', '/tmp'),
-                            "type": "Directory"
+                    deployment["spec"]["template"]["spec"]["volumes"].append(
+                        {
+                            "name": volume["name"],
+                            "hostPath": {
+                                "path": volume.get("volumePath", "/tmp"),
+                                "type": "Directory",
+                            },
                         }
-                    })
-        
+                    )
+
         # 转换为YAML格式
         return yaml.dump(deployment, default_flow_style=False, allow_unicode=True)
 
@@ -758,11 +995,14 @@ class KubeK8sClient:
     @switch_kubeconfig_decorator
     def get_namespace(self, ns: str = None) -> List[Dict]:
         namespaces = self.core_v1.list_namespace().items
-        results = [{
-            "NAME": item.metadata.name,
-            "STATUS": item.status.phase,
-            "AGE": self._format_age(item.metadata.creation_timestamp),
-        } for item in namespaces]
+        results = [
+            {
+                "NAME": item.metadata.name,
+                "STATUS": item.status.phase,
+                "AGE": self._format_age(item.metadata.creation_timestamp),
+            }
+            for item in namespaces
+        ]
         if ns:
             return [next((item for item in results if item["NAME"] == ns), None)]
         return results
@@ -776,14 +1016,16 @@ class KubeK8sClient:
             ready = dep.status.ready_replicas or 0
             uptodate = dep.status.updated_replicas or 0
             available = dep.status.available_replicas or 0
-            result.append({
-                "NAME": dep.metadata.name,
-                "READY": f"{ready}/{desired}",
-                "UP-TO-DATE": uptodate,
-                "AVAILABLE": available,
-                "AGE": self._format_age(dep.metadata.creation_timestamp),
-                "IMAGES": self._join_images(dep.spec.template.spec.containers)
-            })
+            result.append(
+                {
+                    "NAME": dep.metadata.name,
+                    "READY": f"{ready}/{desired}",
+                    "UP-TO-DATE": uptodate,
+                    "AVAILABLE": available,
+                    "AGE": self._format_age(dep.metadata.creation_timestamp),
+                    "IMAGES": self._join_images(dep.spec.template.spec.containers),
+                }
+            )
         return result
 
     @switch_kubeconfig_decorator
@@ -793,14 +1035,18 @@ class KubeK8sClient:
         for pod in pods:
             total = len(pod.spec.containers or [])
             ready = sum(1 for cs in (pod.status.container_statuses or []) if cs.ready)
-            restarts = sum((cs.restart_count or 0) for cs in (pod.status.container_statuses or []))
-            result.append({
-                "NAME": pod.metadata.name,
-                "READY": f"{ready}/{total}",
-                "STATUS": pod.status.phase,
-                "RESTARTS": restarts,
-                "AGE": self._format_age(pod.metadata.creation_timestamp),
-            })
+            restarts = sum(
+                (cs.restart_count or 0) for cs in (pod.status.container_statuses or [])
+            )
+            result.append(
+                {
+                    "NAME": pod.metadata.name,
+                    "READY": f"{ready}/{total}",
+                    "STATUS": pod.status.phase,
+                    "RESTARTS": restarts,
+                    "AGE": self._format_age(pod.metadata.creation_timestamp),
+                }
+            )
         return result
 
     @switch_kubeconfig_decorator
@@ -817,19 +1063,24 @@ class KubeK8sClient:
                 ports.append(f"{port_str}/{protocol}")
             external_ip = ""
             if svc.status.load_balancer and svc.status.load_balancer.ingress:
-                external_ip = svc.status.load_balancer.ingress[0].ip or svc.status.load_balancer.ingress[0].hostname
+                external_ip = (
+                    svc.status.load_balancer.ingress[0].ip
+                    or svc.status.load_balancer.ingress[0].hostname
+                )
             elif svc.spec.external_i_ps:
                 external_ip = ",".join(svc.spec.external_i_ps)
             else:
                 external_ip = "None"
-            result.append({
-                "NAME": svc.metadata.name,
-                "TYPE": svc.spec.type,
-                "CLUSTER-IP": svc.spec.cluster_ip,
-                "EXTERNAL-IP": external_ip,
-                "PORTS": ",".join(ports),
-                "AGE": self._format_age(svc.metadata.creation_timestamp),
-            })
+            result.append(
+                {
+                    "NAME": svc.metadata.name,
+                    "TYPE": svc.spec.type,
+                    "CLUSTER-IP": svc.spec.cluster_ip,
+                    "EXTERNAL-IP": external_ip,
+                    "PORTS": ",".join(ports),
+                    "AGE": self._format_age(svc.metadata.creation_timestamp),
+                }
+            )
         return result
 
     @switch_kubeconfig_decorator
@@ -837,9 +1088,7 @@ class KubeK8sClient:
         if not pods_name:
             raise Exception("pod name 非空")
         return self.core_v1.read_namespaced_pod_log(
-            name=pods_name,
-            namespace=ns or self.namespace,
-            tail_lines=lines
+            name=pods_name, namespace=ns or self.namespace, tail_lines=lines
         )
 
     @switch_kubeconfig_decorator
@@ -850,11 +1099,13 @@ class KubeK8sClient:
         configmaps = self.core_v1.list_namespaced_config_map(ns).items
         result = []
         for cm in configmaps:
-            result.append({
-                "NAME": cm.metadata.name,
-                "DATA": str(len(cm.data)) if cm.data else "0",
-                "AGE": self._format_age(cm.metadata.creation_timestamp),
-            })
+            result.append(
+                {
+                    "NAME": cm.metadata.name,
+                    "DATA": str(len(cm.data)) if cm.data else "0",
+                    "AGE": self._format_age(cm.metadata.creation_timestamp),
+                }
+            )
         return result
 
     @switch_kubeconfig_decorator
@@ -879,13 +1130,17 @@ class KubeK8sClient:
                         addresses.append(lb_ingress.ip)
                     elif lb_ingress.hostname:
                         addresses.append(lb_ingress.hostname)
-            result.append({
-                "NAME": ing.metadata.name,
-                "CLASS": getattr(ing.spec, 'ingress_class_name', '') if ing.spec else '',
-                "HOSTS": ",".join(hosts) if hosts else "*",
-                "ADDRESS": ",".join(addresses) if addresses else "",
-                "AGE": self._format_age(ing.metadata.creation_timestamp),
-            })
+            result.append(
+                {
+                    "NAME": ing.metadata.name,
+                    "CLASS": (
+                        getattr(ing.spec, "ingress_class_name", "") if ing.spec else ""
+                    ),
+                    "HOSTS": ",".join(hosts) if hosts else "*",
+                    "ADDRESS": ",".join(addresses) if addresses else "",
+                    "AGE": self._format_age(ing.metadata.creation_timestamp),
+                }
+            )
         return result
 
     @switch_kubeconfig_decorator
@@ -893,13 +1148,14 @@ class KubeK8sClient:
         if not pod_name:
             raise Exception("pod_name 非空")
         self.core_v1.delete_namespaced_pod(
-            name=pod_name,
-            namespace=ns or self.namespace
+            name=pod_name, namespace=ns or self.namespace
         )
         return "pod deleted"
 
     @switch_kubeconfig_decorator
-    def update_deployment_image(self, ns: str = None, deploy_name: str = None, image: str = None) -> str:
+    def update_deployment_image(
+        self, ns: str = None, deploy_name: str = None, image: str = None
+    ) -> str:
         if not deploy_name:
             raise Exception("deploy_name 非空")
         if not image:
@@ -909,27 +1165,36 @@ class KubeK8sClient:
         if not dep.spec.template.spec.containers:
             raise Exception("未找到容器")
         dep.spec.template.spec.containers[0].image = image
-        self.apps_v1.patch_namespaced_deployment(name=deploy_name, namespace=ns, body=dep)
+        self.apps_v1.patch_namespaced_deployment(
+            name=deploy_name, namespace=ns, body=dep
+        )
         return "deployment image updated"
 
     @switch_kubeconfig_decorator
     def get_deployment_images(self, ns: str = None) -> List[Dict]:
         ns = ns or self.namespace
         deployments = self.apps_v1.list_namespaced_deployment(ns).items
-        return [{
-            "NAME": dep.metadata.name,
-            "IMAGES": self._join_images(dep.spec.template.spec.containers),
-        } for dep in deployments]
+        return [
+            {
+                "NAME": dep.metadata.name,
+                "IMAGES": self._join_images(dep.spec.template.spec.containers),
+            }
+            for dep in deployments
+        ]
 
     @switch_kubeconfig_decorator
-    def scale_deployment(self, ns: str = None, deploy_name: str = None, replicas: int = None) -> str:
+    def scale_deployment(
+        self, ns: str = None, deploy_name: str = None, replicas: int = None
+    ) -> str:
         if not deploy_name:
             raise Exception("deploy_name 非空")
         if replicas is None:
             raise Exception("replicas 非空")
         ns = ns or self.namespace
         body = {"spec": {"replicas": replicas}}
-        self.apps_v1.patch_namespaced_deployment_scale(name=deploy_name, namespace=ns, body=body)
+        self.apps_v1.patch_namespaced_deployment_scale(
+            name=deploy_name, namespace=ns, body=body
+        )
         return "deployment scaled"
 
     @switch_kubeconfig_decorator
@@ -939,7 +1204,7 @@ class KubeK8sClient:
         """
         if not ns:
             raise Exception("namespace name 非空")
-        
+
         # 检查命名空间是否已存在
         try:
             existing_ns = self.core_v1.read_namespace(name=ns)
@@ -949,11 +1214,9 @@ class KubeK8sClient:
             if e.status != 404:
                 # 如果不是404错误（即不是因为不存在而报错），则抛出异常
                 raise e
-        
+
         # 创建命名空间
-        namespace = k8s_client.V1Namespace(
-            metadata=k8s_client.V1ObjectMeta(name=ns)
-        )
+        namespace = k8s_client.V1Namespace(metadata=k8s_client.V1ObjectMeta(name=ns))
         self.core_v1.create_namespace(body=namespace)
         return f"命名空间 {ns} 创建成功"
 
@@ -964,7 +1227,7 @@ class KubeK8sClient:
         """
         if not ns:
             raise Exception("namespace name 非空")
-        
+
         # 检查命名空间是否存在
         try:
             existing_ns = self.core_v1.read_namespace(name=ns)
@@ -975,7 +1238,7 @@ class KubeK8sClient:
                 raise Exception(f"命名空间 {ns} 不存在")
             else:
                 raise e
-        
+
         # 删除命名空间
         self.core_v1.delete_namespace(name=ns)
         return f"命名空间 {ns} 删除成功"
@@ -989,9 +1252,11 @@ class KubeK8sClient:
             raise Exception("deploy_name 非空")
         if not ns:
             raise Exception("namespace 非空")
-        
+
         try:
-            deployment = self.apps_v1.read_namespaced_deployment(name=deploy_name, namespace=ns)
+            deployment = self.apps_v1.read_namespaced_deployment(
+                name=deploy_name, namespace=ns
+            )
             # 将Deployment对象转换为字典格式
             deployment_dict = {
                 "apiVersion": deployment.api_version,
@@ -1024,9 +1289,11 @@ class KubeK8sClient:
             raise Exception("service_name 非空")
         if not ns:
             raise Exception("namespace 非空")
-        
+
         try:
-            service = self.core_v1.read_namespaced_service(name=service_name, namespace=ns)
+            service = self.core_v1.read_namespaced_service(
+                name=service_name, namespace=ns
+            )
             # 将Service对象转换为字典格式
             service_dict = {
                 "apiVersion": service.api_version,
@@ -1059,9 +1326,11 @@ class KubeK8sClient:
             raise Exception("configmap_name 非空")
         if not ns:
             raise Exception("namespace 非空")
-        
+
         try:
-            configmap = self.core_v1.read_namespaced_config_map(name=configmap_name, namespace=ns)
+            configmap = self.core_v1.read_namespaced_config_map(
+                name=configmap_name, namespace=ns
+            )
             # 将ConfigMap对象转换为字典格式
             configmap_dict = {
                 "apiVersion": "v1",
@@ -1094,10 +1363,12 @@ class KubeK8sClient:
             raise Exception("ingress_name 非空")
         if not ns:
             raise Exception("namespace 非空")
-        
+
         try:
             networking_v1 = k8s_client.NetworkingV1Api()
-            ingress = networking_v1.read_namespaced_ingress(name=ingress_name, namespace=ns)
+            ingress = networking_v1.read_namespaced_ingress(
+                name=ingress_name, namespace=ns
+            )
             # 将Ingress对象转换为字典格式
             ingress_dict = {
                 "apiVersion": ingress.api_version,
@@ -1130,12 +1401,9 @@ class KubeK8sClient:
             raise Exception("deploy_name 非空")
         if not ns:
             raise Exception("namespace 非空")
-        
+
         try:
-            self.apps_v1.delete_namespaced_deployment(
-                name=deploy_name,
-                namespace=ns
-            )
+            self.apps_v1.delete_namespaced_deployment(name=deploy_name, namespace=ns)
             return f"Deployment {deploy_name} 删除成功"
         except k8s_client.ApiException as e:
             if e.status == 404:
@@ -1152,12 +1420,9 @@ class KubeK8sClient:
             raise Exception("service_name 非空")
         if not ns:
             raise Exception("namespace 非空")
-        
+
         try:
-            self.core_v1.delete_namespaced_service(
-                name=service_name,
-                namespace=ns
-            )
+            self.core_v1.delete_namespaced_service(name=service_name, namespace=ns)
             return f"Service {service_name} 删除成功"
         except k8s_client.ApiException as e:
             if e.status == 404:
@@ -1174,12 +1439,9 @@ class KubeK8sClient:
             raise Exception("configmap_name 非空")
         if not ns:
             raise Exception("namespace 非空")
-        
+
         try:
-            self.core_v1.delete_namespaced_config_map(
-                name=configmap_name,
-                namespace=ns
-            )
+            self.core_v1.delete_namespaced_config_map(name=configmap_name, namespace=ns)
             return f"ConfigMap {configmap_name} 删除成功"
         except k8s_client.ApiException as e:
             if e.status == 404:
@@ -1196,13 +1458,10 @@ class KubeK8sClient:
             raise Exception("ingress_name 非空")
         if not ns:
             raise Exception("namespace 非空")
-        
+
         try:
             networking_v1 = k8s_client.NetworkingV1Api()
-            networking_v1.delete_namespaced_ingress(
-                name=ingress_name,
-                namespace=ns
-            )
+            networking_v1.delete_namespaced_ingress(name=ingress_name, namespace=ns)
             return f"Ingress {ingress_name} 删除成功"
         except k8s_client.ApiException as e:
             if e.status == 404:
@@ -1218,14 +1477,13 @@ class KubeK8sClient:
         # 构建Deployment对象
         deployment_yaml = self._build_deployment_yaml(deployment_data)
         deployment_dict = yaml.safe_load(deployment_yaml)
-        
+
         # 确保YAML中的命名空间与请求参数一致
-        deployment_dict['metadata']['namespace'] = ns
-        
+        deployment_dict["metadata"]["namespace"] = ns
+
         # 转换为Kubernetes对象
         deployment = self.apps_v1.create_namespaced_deployment(
-            namespace=ns,
-            body=deployment_dict
+            namespace=ns, body=deployment_dict
         )
         return f"Deployment {deployment.metadata.name} 创建成功"
 
@@ -1236,29 +1494,83 @@ class KubeK8sClient:
         """
         # 解析YAML内容
         deployment_dict = yaml.safe_load(yaml_content)
-        
+
         # 确保YAML中的命名空间与请求参数一致
-        deployment_dict['metadata']['namespace'] = ns
-        
+        deployment_dict["metadata"]["namespace"] = ns
+
         # 创建Deployment
         deployment = self.apps_v1.create_namespaced_deployment(
-            namespace=ns,
-            body=deployment_dict
+            namespace=ns, body=deployment_dict
         )
         return f"Deployment {deployment.metadata.name} 创建成功"
+
+    @switch_kubeconfig_decorator
+    def create_service(self, ns: str, service_data: dict) -> str:
+        """
+        使用表单数据创建Service
+        """
+        # 构建Service对象
+        service_yaml = self._build_service_yaml(service_data)
+        service_dict = yaml.safe_load(service_yaml)
+
+        # 确保YAML中的命名空间与请求参数一致
+        service_dict["metadata"]["namespace"] = ns
+
+        # 创建Service
+        service = self.core_v1.create_namespaced_service(
+            namespace=ns, body=service_dict
+        )
+        return f"Service {service.metadata.name} 创建成功"
+
+    @switch_kubeconfig_decorator
+    def create_configmap(self, ns: str, configmap_data: dict) -> str:
+        """
+        使用表单数据创建ConfigMap
+        """
+        # 构建ConfigMap对象
+        configmap_yaml = self._build_configmap_yaml(configmap_data)
+        configmap_dict = yaml.safe_load(configmap_yaml)
+
+        # 确保YAML中的命名空间与请求参数一致
+        configmap_dict["metadata"]["namespace"] = ns
+
+        # 创建ConfigMap
+        configmap = self.core_v1.create_namespaced_config_map(
+            namespace=ns, body=configmap_dict
+        )
+        return f"ConfigMap {configmap.metadata.name} 创建成功"
+
+    @switch_kubeconfig_decorator
+    def create_ingress(self, ns: str, ingress_data: dict) -> str:
+        """
+        使用表单数据创建Ingress
+        """
+        # 构建Ingress对象
+        ingress_yaml = self._build_ingress_yaml(ingress_data)
+        ingress_dict = yaml.safe_load(ingress_yaml)
+
+        # 确保YAML中的命名空间与请求参数一致
+        ingress_dict["metadata"]["namespace"] = ns
+
+        # 创建Ingress
+        networking_v1 = k8s_client.NetworkingV1Api()
+        ingress = networking_v1.create_namespaced_ingress(
+            namespace=ns, body=ingress_dict
+        )
+        return f"Ingress {ingress.metadata.name} 创建成功"
 
     def _build_deployment_yaml(self, deployment_data: dict) -> str:
         """
         根据表单数据构建Deployment YAML
         """
-        name = deployment_data.get('name', 'default-deployment')
-        image = deployment_data.get('image', 'nginx:latest')
-        replicas = deployment_data.get('replicas', 1)
+        name = deployment_data.get("name", "default-deployment")
+        image = deployment_data.get("image", "nginx:latest")
+        replicas = deployment_data.get("replicas", 1)
         # 注意：命名空间由调用方法传入，而不是从deployment_data中获取
-        ports = deployment_data.get('ports', [])
-        env = deployment_data.get('env', [])
-        volumes = deployment_data.get('volumes', [])
-        
+        ports = deployment_data.get("ports", [])
+        env = deployment_data.get("env", [])
+        volumes = deployment_data.get("volumes", [])
+
         # 构建Deployment对象
         deployment = {
             "apiVersion": "apps/v1",
@@ -1266,23 +1578,13 @@ class KubeK8sClient:
             "metadata": {
                 "name": name,
                 "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
-                "labels": {
-                    "app": name
-                }
+                "labels": {"app": name},
             },
             "spec": {
                 "replicas": replicas,
-                "selector": {
-                    "matchLabels": {
-                        "app": name
-                    }
-                },
+                "selector": {"matchLabels": {"app": name}},
                 "template": {
-                    "metadata": {
-                        "labels": {
-                            "app": name
-                        }
-                    },
+                    "metadata": {"labels": {"app": name}},
                     "spec": {
                         "containers": [
                             {
@@ -1290,64 +1592,181 @@ class KubeK8sClient:
                                 "image": image,
                             }
                         ]
-                    }
-                }
-            }
+                    },
+                },
+            },
         }
-        
+
         # 添加端口配置
         if ports:
-            container = deployment['spec']['template']['spec']['containers'][0]
-            container['ports'] = []
+            container = deployment["spec"]["template"]["spec"]["containers"][0]
+            container["ports"] = []
             for port in ports:
-                if port.get('containerPort'):
-                    container['ports'].append({
-                        "containerPort": int(port['containerPort']),
-                        "protocol": port.get('protocol', 'TCP')
-                    })
-        
+                if port.get("containerPort"):
+                    container["ports"].append(
+                        {
+                            "containerPort": int(port["containerPort"]),
+                            "protocol": port.get("protocol", "TCP"),
+                        }
+                    )
+
         # 添加环境变量
         if env:
-            container = deployment['spec']['template']['spec']['containers'][0]
-            container['env'] = []
+            container = deployment["spec"]["template"]["spec"]["containers"][0]
+            container["env"] = []
             for env_var in env:
-                if env_var.get('name') and env_var.get('value'):
-                    container['env'].append({
-                        "name": env_var['name'],
-                        "value": env_var['value']
-                    })
-        
+                if env_var.get("name") and env_var.get("value"):
+                    container["env"].append(
+                        {"name": env_var["name"], "value": env_var["value"]}
+                    )
+
         # 添加卷挂载
         if volumes:
-            container = deployment['spec']['template']['spec']['containers'][0]
-            container['volumeMounts'] = []
-            deployment['spec']['template']['spec']['volumes'] = []
-            
+            container = deployment["spec"]["template"]["spec"]["containers"][0]
+            container["volumeMounts"] = []
+            deployment["spec"]["template"]["spec"]["volumes"] = []
+
             for i, volume in enumerate(volumes):
-                if volume.get('name') and volume.get('mountPath'):
+                if volume.get("name") and volume.get("mountPath"):
                     # 卷挂载
-                    container['volumeMounts'].append({
-                        "name": volume['name'],
-                        "mountPath": volume['mountPath']
-                    })
-                    
+                    container["volumeMounts"].append(
+                        {"name": volume["name"], "mountPath": volume["mountPath"]}
+                    )
+
                     # 卷定义
-                    deployment['spec']['template']['spec']['volumes'].append({
-                        "name": volume['name'],
-                        "hostPath": {
-                            "path": volume.get('volumePath', '/tmp'),
-                            "type": "Directory"
+                    deployment["spec"]["template"]["spec"]["volumes"].append(
+                        {
+                            "name": volume["name"],
+                            "hostPath": {
+                                "path": volume.get("volumePath", "/tmp"),
+                                "type": "Directory",
+                            },
                         }
-                    })
-        
+                    )
+
         # 转换为YAML格式
         return yaml.dump(deployment, default_flow_style=False, allow_unicode=True)
 
+    def _build_service_yaml(self, service_data: dict) -> str:
+        """
+        根据表单数据构建Service YAML
+        """
+        name = service_data.get("name", "default-service")
+        service_type = service_data.get("type", "ClusterIP")
+        selector = service_data.get("selector", {})
+        ports = service_data.get("ports", [])
 
+        # 构建Service对象
+        service = {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "name": name,
+                "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
+                "labels": {"app": name},
+            },
+            "spec": {"type": service_type, "selector": selector, "ports": []},
+        }
+
+        # 添加端口配置
+        if ports:
+            for port in ports:
+                port_config = {
+                    "port": int(port.get("port", 80)),
+                    "targetPort": int(port.get("targetPort", port.get("port", 80))),
+                    "protocol": port.get("protocol", "TCP"),
+                }
+                # 添加可选字段
+                if port.get("name"):
+                    port_config["name"] = port["name"]
+                if port.get("nodePort") and service_type == "NodePort":
+                    port_config["nodePort"] = int(port["nodePort"])
+                service["spec"]["ports"].append(port_config)
+        else:
+            # 如果没有定义端口，则添加默认端口配置
+            service["spec"]["ports"].append(
+                {"port": 80, "targetPort": 80, "protocol": "TCP"}
+            )
+
+        # 转换为YAML格式
+        return yaml.dump(service, default_flow_style=False, allow_unicode=True)
+
+    def _build_configmap_yaml(self, configmap_data: dict) -> str:
+        """
+        根据表单数据构建ConfigMap YAML
+        """
+        name = configmap_data.get("name", "default-configmap")
+        data = configmap_data.get("data", {})
+
+        # 构建ConfigMap对象
+        configmap = {
+            "apiVersion": "v1",
+            "kind": "ConfigMap",
+            "metadata": {
+                "name": name,
+                "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
+                "labels": {"app": name},
+            },
+            "data": data,
+        }
+
+        # 转换为YAML格式
+        return yaml.dump(configmap, default_flow_style=False, allow_unicode=True)
+
+    def _build_ingress_yaml(self, ingress_data: dict) -> str:
+        """
+        根据表单数据构建Ingress YAML
+        """
+        name = ingress_data.get("name", "default-ingress")
+        ingress_class_name = ingress_data.get("ingressClassName", "nginx")
+        rules = ingress_data.get("rules", [])
+
+        # 构建Ingress对象
+        ingress = {
+            "apiVersion": "networking.k8s.io/v1",
+            "kind": "Ingress",
+            "metadata": {
+                "name": name,
+                "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
+                "labels": {"app": name},
+            },
+            "spec": {},
+        }
+
+        # 添加Ingress类名
+        if ingress_class_name:
+            ingress["spec"]["ingressClassName"] = ingress_class_name
+
+        # 添加规则
+        if rules:
+            ingress["spec"]["rules"] = []
+            for rule in rules:
+                ingress_rule = {"host": rule.get("host", ""), "http": {"paths": []}}
+
+                paths = rule.get("paths", [])
+                for path in paths:
+                    path_config = {
+                        "path": path.get("path", "/"),
+                        "pathType": path.get("pathType", "Prefix"),
+                        "backend": {
+                            "service": {
+                                "name": path.get("serviceName", ""),
+                                "port": {"number": int(path.get("servicePort", 80))},
+                            }
+                        },
+                    }
+                    ingress_rule["http"]["paths"].append(path_config)
+
+                ingress["spec"]["rules"].append(ingress_rule)
+
+        # 转换为YAML格式
+        return yaml.dump(ingress, default_flow_style=False, allow_unicode=True)
 
 
 if __name__ == "__main__":
-    client = K8sClientSvc(k8s_controller="KUBE", kube_config="/home/projects/k8s-manage/config_187")
+    client = K8sClientSvc(
+        k8s_controller="KUBE", kube_config="/home/projects/k8s-manage/config_187"
+    )
     print(client.get_namespace())
     client.namespace = "kube-system"
     print(client.get_deployments())
