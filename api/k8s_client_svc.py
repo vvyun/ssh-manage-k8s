@@ -6,7 +6,8 @@ from typing import Dict, List, Optional
 
 from kubernetes import client as k8s_client
 from kubernetes import config as k8s_config
-
+import tempfile
+import os
 from ssh_client import SSHClient
 
 
@@ -190,6 +191,12 @@ class K8sClientSvc:
         # 替换YAML中的占位符命名空间
         ingress_yaml = ingress_yaml.replace("PLACEHOLDER_NAMESPACE", ns)
         return self.client.create_ingress(ns, ingress_yaml)
+
+    def apply_yaml(self, ns: str, yaml_content: str) -> str:
+        """
+        从YAML创建资源
+        """
+        return self.client.apply_yaml(ns, yaml_content)
 
     def get_configmap_detail(self, ns: str, configmap_name: str) -> dict:
         """
@@ -445,8 +452,6 @@ class K8sClientSvc:
 
         # 转换为YAML格式
         return yaml.dump(ingress, default_flow_style=False, allow_unicode=True)
-
-
 
 
 def convert2map(res: dict) -> list[dict]:
@@ -811,100 +816,50 @@ class SshK8sClient:
         """
         创建Service - 通过表单数据
         """
-        import tempfile
-        import os
-        # 创建临时文件
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            f.write(service_yaml)
-            temp_file_path = f.name
-
-        try:
-            # 使用kubectl apply创建Service
-            result = self.ssh_client.execute_command(
-                f"kubectl apply -f {temp_file_path} -n {ns}"
-            )
-            if not result.get("success", False):
-                raise Exception(
-                    f"创建Service失败: {result.get('error', 'Unknown error')}"
-                )
-            return result["output"]
-        finally:
-            # 清理临时文件
-            os.unlink(temp_file_path)
+        return self.apply_yaml(ns, service_yaml)
 
     @re_connect_if_disconnect_decorator
     def create_configmap(self, ns: str, configmap_yaml: str) -> str:
         """
         创建ConfigMap - 通过表单数据
         """
-        import tempfile
-        import os
-        # 创建临时文件
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            f.write(configmap_yaml)
-            temp_file_path = f.name
-
-        try:
-            # 使用kubectl apply创建ConfigMap
-            result = self.ssh_client.execute_command(
-                f"kubectl apply -f {temp_file_path} -n {ns}"
-            )
-            if not result.get("success", False):
-                raise Exception(
-                    f"创建ConfigMap失败: {result.get('error', 'Unknown error')}"
-                )
-            return result["output"]
-        finally:
-            # 清理临时文件
-            os.unlink(temp_file_path)
+        return self.apply_yaml(ns, configmap_yaml)
 
     @re_connect_if_disconnect_decorator
     def create_ingress(self, ns: str, ingress_yaml: str) -> str:
         """
         创建Ingress - 通过表单数据
         """
-        import tempfile
-        import os
-        # 创建临时文件
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            f.write(ingress_yaml)
-            temp_file_path = f.name
-
-        try:
-            # 使用kubectl apply创建Ingress
-            result = self.ssh_client.execute_command(
-                f"kubectl apply -f {temp_file_path} -n {ns}"
-            )
-            if not result.get("success", False):
-                raise Exception(
-                    f"创建Ingress失败: {result.get('error', 'Unknown error')}"
-                )
-            return result["output"]
-        finally:
-            # 清理临时文件
-            os.unlink(temp_file_path)
+        return self.apply_yaml(ns, ingress_yaml)
 
     @re_connect_if_disconnect_decorator
     def create_deployment(self, ns: str, deployment_yaml: str) -> str:
         """
         创建Deployment - 通过表单数据
         """
-        import tempfile
-        import os
+        return self.apply_yaml(ns, deployment_yaml)
+
+    def apply_yaml(self, ns: str, yaml_content: str) -> str:
+        """
+        使用kubectl apply创建或更新资源
+        """
         # 创建临时文件
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            f.write(deployment_yaml)
+            f.write(yaml_content)
             temp_file_path = f.name
 
         try:
-            # 使用kubectl apply创建Deployment
+            remote_file_path = (
+                f"/home/temp-{ns}-{datetime.now().strftime('%Y%m%d%H%M%S')}.yaml"
+            )
+            self.ssh_client.upload_file(temp_file_path, remote_file_path)
+
+            # 使用kubectl apply创建Service
             result = self.ssh_client.execute_command(
-                f"kubectl apply -f {temp_file_path} -n {ns}"
+                f"kubectl apply -f {remote_file_path} -n {ns}"
             )
             if not result.get("success", False):
-                raise Exception(
-                    f"创建Deployment失败: {result.get('error', 'Unknown error')}"
-                )
+                raise Exception(f"创建资源失败: {result.get('error', 'Unknown error')}")
             return result["output"]
         finally:
             # 清理临时文件
@@ -1526,6 +1481,25 @@ class KubeK8sClient:
             namespace=ns, body=ingress_dict
         )
         return f"Ingress {ingress.metadata.name} 创建成功"
+
+    @switch_kubeconfig_decorator
+    def apply_yaml(self, ns: str, yaml_content: str) -> str:
+        """
+        从YAML创建资源
+        """
+        # 判断类型
+        yaml_dict = yaml.safe_load(yaml_content)
+        if yaml_dict["kind"] == "Deployment":
+            return self.create_deployment(ns, yaml_content)
+        elif yaml_dict["kind"] == "Service":
+            return self.create_service(ns, yaml_content)
+        elif yaml_dict["kind"] == "ConfigMap":
+            return self.create_configmap(ns, yaml_content)
+        elif yaml_dict["kind"] == "Ingress":
+            return self.create_ingress(ns, yaml_content)
+        else:
+            raise Exception("不支持的资源类型")
+
 
 if __name__ == "__main__":
     client = K8sClientSvc(

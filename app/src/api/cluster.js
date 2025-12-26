@@ -78,23 +78,13 @@ export const scaleDeployment = (clusterId, deploymentName, replicas, namespace) 
     { params: { namespace } }
   )
 
-// 创建Deployment - 表单模式
-export const createDeploymentFromForm = (clusterId, deploymentData, namespace) =>
-  api.post(`/clusters/${clusterId}/deployments`, deploymentData, { params: { namespace } })
+// apply YAML
+export const createFromYaml = (clusterId, yamlContent, namespace) =>
+  api.post(`/clusters/${clusterId}/yaml`, { yaml: yamlContent }, { params: { namespace } })
 
-// 创建Deployment - YAML模式
-export const createDeploymentFromYaml = (clusterId, yamlContent, namespace) =>
-  api.post(`/clusters/${clusterId}/deployments/yaml`, { yaml: yamlContent }, { params: { namespace } })
-
-// 通用的createDeployment函数，根据参数类型决定使用哪种方式
-export const createDeployment = (clusterId, data, namespace) => {
-  if (data.yaml !== undefined) {
-    // YAML模式
-    return createDeploymentFromYaml(clusterId, data.yaml, namespace);
-  } else {
-    // 表单模式
-    return createDeploymentFromForm(clusterId, data, namespace);
-  }
+// 创建Deployment
+export const createDeployment = (clusterId, deploymentData, namespace) => {
+    api.post(`/clusters/${clusterId}/deployments`, deploymentData, { params: { namespace } })
 }
 
 // 创建Service

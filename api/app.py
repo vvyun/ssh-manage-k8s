@@ -263,8 +263,8 @@ def create_deployment(cluster_id):
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/api/clusters/<cluster_id>/deployments/yaml', methods=['POST'])
-def create_deployment_from_yaml(cluster_id):
+@app.route('/api/clusters/<cluster_id>/yaml', methods=['POST'])
+def create_from_yaml(cluster_id):
     """从YAML创建Deployment"""
     namespace = request.args.get('namespace', 'default')
     data = request.json
@@ -278,7 +278,7 @@ def create_deployment_from_yaml(cluster_id):
         return jsonify({"error": "YAML content is required"}), 400
 
     try:
-        result = client.create_deployment_from_yaml(namespace, yaml_content)
+        result = client.apply_yaml(namespace, yaml_content)
         return jsonify({"success": True, "message": result})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
