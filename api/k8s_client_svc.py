@@ -158,25 +158,38 @@ class K8sClientSvc:
         """
         创建Deployment
         """
-        return self.client.create_deployment(ns, deployment_data)
+        deployment_yaml = self._build_deployment_yaml(deployment_data)
+        # 替换YAML中的占位符命名空间
+        deployment_yaml = deployment_yaml.replace("PLACEHOLDER_NAMESPACE", ns)
+        return self.client.create_deployment(ns, deployment_yaml)
 
     def create_service(self, ns: str, service_data: dict) -> str:
         """
         创建Service
         """
-        return self.client.create_service(ns, service_data)
+        # 构建Service YAML内容
+        service_yaml = self._build_service_yaml(service_data)
+        # 替换YAML中的占位符命名空间
+        service_yaml = service_yaml.replace("PLACEHOLDER_NAMESPACE", ns)
+        return self.client.create_service(ns, service_yaml)
 
     def create_configmap(self, ns: str, configmap_data: dict) -> str:
         """
         创建ConfigMap
         """
-        return self.client.create_configmap(ns, configmap_data)
+        configmap_yaml = self._build_configmap_yaml(configmap_data)
+        # 替换YAML中的占位符命名空间
+        configmap_yaml = configmap_yaml.replace("PLACEHOLDER_NAMESPACE", ns)
+        return self.client.create_configmap(ns, configmap_yaml)
 
     def create_ingress(self, ns: str, ingress_data: dict) -> str:
         """
         创建Ingress
         """
-        return self.client.create_ingress(ns, ingress_data)
+        ingress_yaml = self._build_ingress_yaml(ingress_data)
+        # 替换YAML中的占位符命名空间
+        ingress_yaml = ingress_yaml.replace("PLACEHOLDER_NAMESPACE", ns)
+        return self.client.create_ingress(ns, ingress_yaml)
 
     def get_configmap_detail(self, ns: str, configmap_name: str) -> dict:
         """
@@ -229,6 +242,211 @@ class K8sClientSvc:
         if not ns:
             raise Exception("namespace 非空")
         return self.client.delete_ingress(ingress_name, ns)
+
+    def _build_deployment_yaml(self, deployment_data: dict) -> str:
+        """
+        根据表单数据构建Deployment YAML
+        """
+        name = deployment_data.get("name", "default-deployment")
+        image = deployment_data.get("image", "nginx:latest")
+        replicas = deployment_data.get("replicas", 1)
+        # 注意：命名空间由调用方法传入，而不是从deployment_data中获取
+        ports = deployment_data.get("ports", [])
+        env = deployment_data.get("env", [])
+        volumes = deployment_data.get("volumes", [])
+
+        # 构建Deployment对象
+        deployment = {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "metadata": {
+                "name": name,
+                "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
+                "labels": {"app": name},
+            },
+            "spec": {
+                "replicas": replicas,
+                "selector": {"matchLabels": {"app": name}},
+                "template": {
+                    "metadata": {"labels": {"app": name}},
+                    "spec": {
+                        "containers": [
+                            {
+                                "name": name,
+                                "image": image,
+                            }
+                        ]
+                    },
+                },
+            },
+        }
+
+        # 添加端口配置
+        if ports:
+            container = deployment["spec"]["template"]["spec"]["containers"][0]
+            container["ports"] = []
+            for port in ports:
+                if port.get("containerPort"):
+                    container["ports"].append(
+                        {
+                            "containerPort": int(port["containerPort"]),
+                            "protocol": port.get("protocol", "TCP"),
+                        }
+                    )
+
+        # 添加环境变量
+        if env:
+            container = deployment["spec"]["template"]["spec"]["containers"][0]
+            container["env"] = []
+            for env_var in env:
+                if env_var.get("name") and env_var.get("value"):
+                    container["env"].append(
+                        {"name": env_var["name"], "value": env_var["value"]}
+                    )
+
+        # 添加卷挂载
+        if volumes:
+            container = deployment["spec"]["template"]["spec"]["containers"][0]
+            container["volumeMounts"] = []
+            deployment["spec"]["template"]["spec"]["volumes"] = []
+
+            for i, volume in enumerate(volumes):
+                if volume.get("name") and volume.get("mountPath"):
+                    # 卷挂载
+                    container["volumeMounts"].append(
+                        {"name": volume["name"], "mountPath": volume["mountPath"]}
+                    )
+
+                    # 卷定义
+                    deployment["spec"]["template"]["spec"]["volumes"].append(
+                        {
+                            "name": volume["name"],
+                            "hostPath": {
+                                "path": volume.get("volumePath", "/tmp"),
+                                "type": "Directory",
+                            },
+                        }
+                    )
+
+        # 转换为YAML格式
+        return yaml.dump(deployment, default_flow_style=False, allow_unicode=True)
+
+    def _build_service_yaml(self, service_data: dict) -> str:
+        """
+        根据表单数据构建Service YAML
+        """
+        name = service_data.get("name", "default-service")
+        service_type = service_data.get("type", "ClusterIP")
+        selector = service_data.get("selector", {})
+        ports = service_data.get("ports", [])
+
+        # 构建Service对象
+        service = {
+            "apiVersion": "v1",
+            "kind": "Service",
+            "metadata": {
+                "name": name,
+                "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
+                "labels": {"app": name},
+            },
+            "spec": {"type": service_type, "selector": selector, "ports": []},
+        }
+
+        # 添加端口配置
+        if ports:
+            for port in ports:
+                port_config = {
+                    "port": int(port.get("port", 80)),
+                    "targetPort": int(port.get("targetPort", port.get("port", 80))),
+                    "protocol": port.get("protocol", "TCP"),
+                }
+                # 添加可选字段
+                if port.get("name"):
+                    port_config["name"] = port["name"]
+                if port.get("nodePort") and service_type == "NodePort":
+                    port_config["nodePort"] = int(port["nodePort"])
+                service["spec"]["ports"].append(port_config)
+        else:
+            # 如果没有定义端口，则添加默认端口配置
+            service["spec"]["ports"].append(
+                {"port": 80, "targetPort": 80, "protocol": "TCP"}
+            )
+
+        # 转换为YAML格式
+        return yaml.dump(service, default_flow_style=False, allow_unicode=True)
+
+    def _build_configmap_yaml(self, configmap_data: dict) -> str:
+        """
+        根据表单数据构建ConfigMap YAML
+        """
+        name = configmap_data.get("name", "default-configmap")
+        data = configmap_data.get("data", {})
+
+        # 构建ConfigMap对象
+        configmap = {
+            "apiVersion": "v1",
+            "kind": "ConfigMap",
+            "metadata": {
+                "name": name,
+                "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
+                "labels": {"app": name},
+            },
+            "data": data,
+        }
+
+        # 转换为YAML格式
+        return yaml.dump(configmap, default_flow_style=False, allow_unicode=True)
+
+    def _build_ingress_yaml(self, ingress_data: dict) -> str:
+        """
+        根据表单数据构建Ingress YAML
+        """
+        name = ingress_data.get("name", "default-ingress")
+        ingress_class_name = ingress_data.get("ingressClassName", "nginx")
+        rules = ingress_data.get("rules", [])
+
+        # 构建Ingress对象
+        ingress = {
+            "apiVersion": "networking.k8s.io/v1",
+            "kind": "Ingress",
+            "metadata": {
+                "name": name,
+                "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
+                "labels": {"app": name},
+            },
+            "spec": {},
+        }
+
+        # 添加Ingress类名
+        if ingress_class_name:
+            ingress["spec"]["ingressClassName"] = ingress_class_name
+
+        # 添加规则
+        if rules:
+            ingress["spec"]["rules"] = []
+            for rule in rules:
+                ingress_rule = {"host": rule.get("host", ""), "http": {"paths": []}}
+
+                paths = rule.get("paths", [])
+                for path in paths:
+                    path_config = {
+                        "path": path.get("path", "/"),
+                        "pathType": path.get("pathType", "Prefix"),
+                        "backend": {
+                            "service": {
+                                "name": path.get("serviceName", ""),
+                                "port": {"number": int(path.get("servicePort", 80))},
+                            }
+                        },
+                    }
+                    ingress_rule["http"]["paths"].append(path_config)
+
+                ingress["spec"]["rules"].append(ingress_rule)
+
+        # 转换为YAML格式
+        return yaml.dump(ingress, default_flow_style=False, allow_unicode=True)
+
+
 
 
 def convert2map(res: dict) -> list[dict]:
@@ -589,18 +807,12 @@ class SshK8sClient:
         return result["output"]
 
     @re_connect_if_disconnect_decorator
-    def create_service(self, ns: str, service_data: dict) -> str:
+    def create_service(self, ns: str, service_yaml: str) -> str:
         """
         创建Service - 通过表单数据
         """
         import tempfile
         import os
-
-        # 构建Service YAML内容
-        service_yaml = self._build_service_yaml(service_data)
-        # 替换YAML中的占位符命名空间
-        service_yaml = service_yaml.replace("PLACEHOLDER_NAMESPACE", ns)
-
         # 创建临时文件
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(service_yaml)
@@ -621,18 +833,12 @@ class SshK8sClient:
             os.unlink(temp_file_path)
 
     @re_connect_if_disconnect_decorator
-    def create_configmap(self, ns: str, configmap_data: dict) -> str:
+    def create_configmap(self, ns: str, configmap_yaml: str) -> str:
         """
         创建ConfigMap - 通过表单数据
         """
         import tempfile
         import os
-
-        # 构建ConfigMap YAML内容
-        configmap_yaml = self._build_configmap_yaml(configmap_data)
-        # 替换YAML中的占位符命名空间
-        configmap_yaml = configmap_yaml.replace("PLACEHOLDER_NAMESPACE", ns)
-
         # 创建临时文件
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(configmap_yaml)
@@ -653,18 +859,12 @@ class SshK8sClient:
             os.unlink(temp_file_path)
 
     @re_connect_if_disconnect_decorator
-    def create_ingress(self, ns: str, ingress_data: dict) -> str:
+    def create_ingress(self, ns: str, ingress_yaml: str) -> str:
         """
         创建Ingress - 通过表单数据
         """
         import tempfile
         import os
-
-        # 构建Ingress YAML内容
-        ingress_yaml = self._build_ingress_yaml(ingress_data)
-        # 替换YAML中的占位符命名空间
-        ingress_yaml = ingress_yaml.replace("PLACEHOLDER_NAMESPACE", ns)
-
         # 创建临时文件
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(ingress_yaml)
@@ -685,18 +885,12 @@ class SshK8sClient:
             os.unlink(temp_file_path)
 
     @re_connect_if_disconnect_decorator
-    def create_deployment(self, ns: str, deployment_data: dict) -> str:
+    def create_deployment(self, ns: str, deployment_yaml: str) -> str:
         """
         创建Deployment - 通过表单数据
         """
         import tempfile
         import os
-
-        # 构建Deployment YAML内容
-        deployment_yaml = self._build_deployment_yaml(deployment_data)
-        # 替换YAML中的占位符命名空间
-        deployment_yaml = deployment_yaml.replace("PLACEHOLDER_NAMESPACE", ns)
-
         # 创建临时文件
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(deployment_yaml)
@@ -715,210 +909,6 @@ class SshK8sClient:
         finally:
             # 清理临时文件
             os.unlink(temp_file_path)
-
-    def _build_service_yaml(self, service_data: dict) -> str:
-        """
-        根据表单数据构建Service YAML
-        """
-        name = service_data.get("name", "default-service")
-        service_type = service_data.get("type", "ClusterIP")
-        selector = service_data.get("selector", {})
-        ports = service_data.get("ports", [])
-
-        # 构建Service对象
-        service = {
-            "apiVersion": "v1",
-            "kind": "Service",
-            "metadata": {
-                "name": name,
-                "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
-                "labels": {"app": name},
-            },
-            "spec": {"type": service_type, "selector": selector, "ports": []},
-        }
-
-        # 添加端口配置
-        if ports:
-            for port in ports:
-                port_config = {
-                    "port": int(port.get("port", 80)),
-                    "targetPort": int(port.get("targetPort", port.get("port", 80))),
-                    "protocol": port.get("protocol", "TCP"),
-                }
-                # 添加可选字段
-                if port.get("name"):
-                    port_config["name"] = port["name"]
-                if port.get("nodePort") and service_type == "NodePort":
-                    port_config["nodePort"] = int(port["nodePort"])
-                service["spec"]["ports"].append(port_config)
-        else:
-            # 如果没有定义端口，则添加默认端口配置
-            service["spec"]["ports"].append(
-                {"port": 80, "targetPort": 80, "protocol": "TCP"}
-            )
-
-        # 转换为YAML格式
-        return yaml.dump(service, default_flow_style=False, allow_unicode=True)
-
-    def _build_configmap_yaml(self, configmap_data: dict) -> str:
-        """
-        根据表单数据构建ConfigMap YAML
-        """
-        name = configmap_data.get("name", "default-configmap")
-        data = configmap_data.get("data", {})
-
-        # 构建ConfigMap对象
-        configmap = {
-            "apiVersion": "v1",
-            "kind": "ConfigMap",
-            "metadata": {
-                "name": name,
-                "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
-                "labels": {"app": name},
-            },
-            "data": data,
-        }
-
-        # 转换为YAML格式
-        return yaml.dump(configmap, default_flow_style=False, allow_unicode=True)
-
-    def _build_ingress_yaml(self, ingress_data: dict) -> str:
-        """
-        根据表单数据构建Ingress YAML
-        """
-        name = ingress_data.get("name", "default-ingress")
-        ingress_class_name = ingress_data.get("ingressClassName", "nginx")
-        rules = ingress_data.get("rules", [])
-
-        # 构建Ingress对象
-        ingress = {
-            "apiVersion": "networking.k8s.io/v1",
-            "kind": "Ingress",
-            "metadata": {
-                "name": name,
-                "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
-                "labels": {"app": name},
-            },
-            "spec": {},
-        }
-
-        # 添加Ingress类名
-        if ingress_class_name:
-            ingress["spec"]["ingressClassName"] = ingress_class_name
-
-        # 添加规则
-        if rules:
-            ingress["spec"]["rules"] = []
-            for rule in rules:
-                ingress_rule = {"host": rule.get("host", ""), "http": {"paths": []}}
-
-                paths = rule.get("paths", [])
-                for path in paths:
-                    path_config = {
-                        "path": path.get("path", "/"),
-                        "pathType": path.get("pathType", "Prefix"),
-                        "backend": {
-                            "service": {
-                                "name": path.get("serviceName", ""),
-                                "port": {"number": int(path.get("servicePort", 80))},
-                            }
-                        },
-                    }
-                    ingress_rule["http"]["paths"].append(path_config)
-
-                ingress["spec"]["rules"].append(ingress_rule)
-
-        # 转换为YAML格式
-        return yaml.dump(ingress, default_flow_style=False, allow_unicode=True)
-
-    def _build_deployment_yaml(self, deployment_data: dict) -> str:
-        """
-        根据表单数据构建Deployment YAML
-        """
-
-        name = deployment_data.get("name", "default-deployment")
-        image = deployment_data.get("image", "nginx:latest")
-        replicas = deployment_data.get("replicas", 1)
-        # 注意：命名空间由调用方法传入，而不是从deployment_data中获取
-        ports = deployment_data.get("ports", [])
-        env = deployment_data.get("env", [])
-        volumes = deployment_data.get("volumes", [])
-
-        # 构建Deployment对象
-        deployment = {
-            "apiVersion": "apps/v1",
-            "kind": "Deployment",
-            "metadata": {
-                "name": name,
-                "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
-                "labels": {"app": name},
-            },
-            "spec": {
-                "replicas": replicas,
-                "selector": {"matchLabels": {"app": name}},
-                "template": {
-                    "metadata": {"labels": {"app": name}},
-                    "spec": {
-                        "containers": [
-                            {
-                                "name": name,
-                                "image": image,
-                            }
-                        ]
-                    },
-                },
-            },
-        }
-
-        # 添加端口配置
-        if ports:
-            container = deployment["spec"]["template"]["spec"]["containers"][0]
-            container["ports"] = []
-            for port in ports:
-                if port.get("containerPort"):
-                    container["ports"].append(
-                        {
-                            "containerPort": int(port["containerPort"]),
-                            "protocol": port.get("protocol", "TCP"),
-                        }
-                    )
-
-        # 添加环境变量
-        if env:
-            container = deployment["spec"]["template"]["spec"]["containers"][0]
-            container["env"] = []
-            for env_var in env:
-                if env_var.get("name") and env_var.get("value"):
-                    container["env"].append(
-                        {"name": env_var["name"], "value": env_var["value"]}
-                    )
-
-        # 添加卷挂载
-        if volumes:
-            container = deployment["spec"]["template"]["spec"]["containers"][0]
-            container["volumeMounts"] = []
-            deployment["spec"]["template"]["spec"]["volumes"] = []
-
-            for i, volume in enumerate(volumes):
-                if volume.get("name") and volume.get("mountPath"):
-                    # 卷挂载
-                    container["volumeMounts"].append(
-                        {"name": volume["name"], "mountPath": volume["mountPath"]}
-                    )
-
-                    # 卷定义
-                    deployment["spec"]["template"]["spec"]["volumes"].append(
-                        {
-                            "name": volume["name"],
-                            "hostPath": {
-                                "path": volume.get("volumePath", "/tmp"),
-                                "type": "Directory",
-                            },
-                        }
-                    )
-
-        # 转换为YAML格式
-        return yaml.dump(deployment, default_flow_style=False, allow_unicode=True)
 
 
 def switch_kubeconfig_decorator(func):
@@ -1470,14 +1460,12 @@ class KubeK8sClient:
                 raise e
 
     @switch_kubeconfig_decorator
-    def create_deployment(self, ns: str, deployment_data: dict) -> str:
+    def create_deployment(self, ns: str, deployment_yaml: str) -> str:
         """
         使用表单数据创建Deployment
         """
         # 构建Deployment对象
-        deployment_yaml = self._build_deployment_yaml(deployment_data)
         deployment_dict = yaml.safe_load(deployment_yaml)
-
         # 确保YAML中的命名空间与请求参数一致
         deployment_dict["metadata"]["namespace"] = ns
 
@@ -1488,29 +1476,11 @@ class KubeK8sClient:
         return f"Deployment {deployment.metadata.name} 创建成功"
 
     @switch_kubeconfig_decorator
-    def create_deployment_from_yaml(self, ns: str, yaml_content: str) -> str:
-        """
-        从YAML内容创建Deployment
-        """
-        # 解析YAML内容
-        deployment_dict = yaml.safe_load(yaml_content)
-
-        # 确保YAML中的命名空间与请求参数一致
-        deployment_dict["metadata"]["namespace"] = ns
-
-        # 创建Deployment
-        deployment = self.apps_v1.create_namespaced_deployment(
-            namespace=ns, body=deployment_dict
-        )
-        return f"Deployment {deployment.metadata.name} 创建成功"
-
-    @switch_kubeconfig_decorator
-    def create_service(self, ns: str, service_data: dict) -> str:
+    def create_service(self, ns: str, service_yaml: str) -> str:
         """
         使用表单数据创建Service
         """
         # 构建Service对象
-        service_yaml = self._build_service_yaml(service_data)
         service_dict = yaml.safe_load(service_yaml)
 
         # 确保YAML中的命名空间与请求参数一致
@@ -1523,12 +1493,11 @@ class KubeK8sClient:
         return f"Service {service.metadata.name} 创建成功"
 
     @switch_kubeconfig_decorator
-    def create_configmap(self, ns: str, configmap_data: dict) -> str:
+    def create_configmap(self, ns: str, configmap_yaml: str) -> str:
         """
         使用表单数据创建ConfigMap
         """
         # 构建ConfigMap对象
-        configmap_yaml = self._build_configmap_yaml(configmap_data)
         configmap_dict = yaml.safe_load(configmap_yaml)
 
         # 确保YAML中的命名空间与请求参数一致
@@ -1541,12 +1510,11 @@ class KubeK8sClient:
         return f"ConfigMap {configmap.metadata.name} 创建成功"
 
     @switch_kubeconfig_decorator
-    def create_ingress(self, ns: str, ingress_data: dict) -> str:
+    def create_ingress(self, ns: str, ingress_yaml: str) -> str:
         """
         使用表单数据创建Ingress
         """
         # 构建Ingress对象
-        ingress_yaml = self._build_ingress_yaml(ingress_data)
         ingress_dict = yaml.safe_load(ingress_yaml)
 
         # 确保YAML中的命名空间与请求参数一致
@@ -1558,210 +1526,6 @@ class KubeK8sClient:
             namespace=ns, body=ingress_dict
         )
         return f"Ingress {ingress.metadata.name} 创建成功"
-
-    def _build_deployment_yaml(self, deployment_data: dict) -> str:
-        """
-        根据表单数据构建Deployment YAML
-        """
-        name = deployment_data.get("name", "default-deployment")
-        image = deployment_data.get("image", "nginx:latest")
-        replicas = deployment_data.get("replicas", 1)
-        # 注意：命名空间由调用方法传入，而不是从deployment_data中获取
-        ports = deployment_data.get("ports", [])
-        env = deployment_data.get("env", [])
-        volumes = deployment_data.get("volumes", [])
-
-        # 构建Deployment对象
-        deployment = {
-            "apiVersion": "apps/v1",
-            "kind": "Deployment",
-            "metadata": {
-                "name": name,
-                "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
-                "labels": {"app": name},
-            },
-            "spec": {
-                "replicas": replicas,
-                "selector": {"matchLabels": {"app": name}},
-                "template": {
-                    "metadata": {"labels": {"app": name}},
-                    "spec": {
-                        "containers": [
-                            {
-                                "name": name,
-                                "image": image,
-                            }
-                        ]
-                    },
-                },
-            },
-        }
-
-        # 添加端口配置
-        if ports:
-            container = deployment["spec"]["template"]["spec"]["containers"][0]
-            container["ports"] = []
-            for port in ports:
-                if port.get("containerPort"):
-                    container["ports"].append(
-                        {
-                            "containerPort": int(port["containerPort"]),
-                            "protocol": port.get("protocol", "TCP"),
-                        }
-                    )
-
-        # 添加环境变量
-        if env:
-            container = deployment["spec"]["template"]["spec"]["containers"][0]
-            container["env"] = []
-            for env_var in env:
-                if env_var.get("name") and env_var.get("value"):
-                    container["env"].append(
-                        {"name": env_var["name"], "value": env_var["value"]}
-                    )
-
-        # 添加卷挂载
-        if volumes:
-            container = deployment["spec"]["template"]["spec"]["containers"][0]
-            container["volumeMounts"] = []
-            deployment["spec"]["template"]["spec"]["volumes"] = []
-
-            for i, volume in enumerate(volumes):
-                if volume.get("name") and volume.get("mountPath"):
-                    # 卷挂载
-                    container["volumeMounts"].append(
-                        {"name": volume["name"], "mountPath": volume["mountPath"]}
-                    )
-
-                    # 卷定义
-                    deployment["spec"]["template"]["spec"]["volumes"].append(
-                        {
-                            "name": volume["name"],
-                            "hostPath": {
-                                "path": volume.get("volumePath", "/tmp"),
-                                "type": "Directory",
-                            },
-                        }
-                    )
-
-        # 转换为YAML格式
-        return yaml.dump(deployment, default_flow_style=False, allow_unicode=True)
-
-    def _build_service_yaml(self, service_data: dict) -> str:
-        """
-        根据表单数据构建Service YAML
-        """
-        name = service_data.get("name", "default-service")
-        service_type = service_data.get("type", "ClusterIP")
-        selector = service_data.get("selector", {})
-        ports = service_data.get("ports", [])
-
-        # 构建Service对象
-        service = {
-            "apiVersion": "v1",
-            "kind": "Service",
-            "metadata": {
-                "name": name,
-                "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
-                "labels": {"app": name},
-            },
-            "spec": {"type": service_type, "selector": selector, "ports": []},
-        }
-
-        # 添加端口配置
-        if ports:
-            for port in ports:
-                port_config = {
-                    "port": int(port.get("port", 80)),
-                    "targetPort": int(port.get("targetPort", port.get("port", 80))),
-                    "protocol": port.get("protocol", "TCP"),
-                }
-                # 添加可选字段
-                if port.get("name"):
-                    port_config["name"] = port["name"]
-                if port.get("nodePort") and service_type == "NodePort":
-                    port_config["nodePort"] = int(port["nodePort"])
-                service["spec"]["ports"].append(port_config)
-        else:
-            # 如果没有定义端口，则添加默认端口配置
-            service["spec"]["ports"].append(
-                {"port": 80, "targetPort": 80, "protocol": "TCP"}
-            )
-
-        # 转换为YAML格式
-        return yaml.dump(service, default_flow_style=False, allow_unicode=True)
-
-    def _build_configmap_yaml(self, configmap_data: dict) -> str:
-        """
-        根据表单数据构建ConfigMap YAML
-        """
-        name = configmap_data.get("name", "default-configmap")
-        data = configmap_data.get("data", {})
-
-        # 构建ConfigMap对象
-        configmap = {
-            "apiVersion": "v1",
-            "kind": "ConfigMap",
-            "metadata": {
-                "name": name,
-                "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
-                "labels": {"app": name},
-            },
-            "data": data,
-        }
-
-        # 转换为YAML格式
-        return yaml.dump(configmap, default_flow_style=False, allow_unicode=True)
-
-    def _build_ingress_yaml(self, ingress_data: dict) -> str:
-        """
-        根据表单数据构建Ingress YAML
-        """
-        name = ingress_data.get("name", "default-ingress")
-        ingress_class_name = ingress_data.get("ingressClassName", "nginx")
-        rules = ingress_data.get("rules", [])
-
-        # 构建Ingress对象
-        ingress = {
-            "apiVersion": "networking.k8s.io/v1",
-            "kind": "Ingress",
-            "metadata": {
-                "name": name,
-                "namespace": "PLACEHOLDER_NAMESPACE",  # 将在调用方法中设置正确的命名空间
-                "labels": {"app": name},
-            },
-            "spec": {},
-        }
-
-        # 添加Ingress类名
-        if ingress_class_name:
-            ingress["spec"]["ingressClassName"] = ingress_class_name
-
-        # 添加规则
-        if rules:
-            ingress["spec"]["rules"] = []
-            for rule in rules:
-                ingress_rule = {"host": rule.get("host", ""), "http": {"paths": []}}
-
-                paths = rule.get("paths", [])
-                for path in paths:
-                    path_config = {
-                        "path": path.get("path", "/"),
-                        "pathType": path.get("pathType", "Prefix"),
-                        "backend": {
-                            "service": {
-                                "name": path.get("serviceName", ""),
-                                "port": {"number": int(path.get("servicePort", 80))},
-                            }
-                        },
-                    }
-                    ingress_rule["http"]["paths"].append(path_config)
-
-                ingress["spec"]["rules"].append(ingress_rule)
-
-        # 转换为YAML格式
-        return yaml.dump(ingress, default_flow_style=False, allow_unicode=True)
-
 
 if __name__ == "__main__":
     client = K8sClientSvc(
