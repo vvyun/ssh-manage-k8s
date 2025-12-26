@@ -174,6 +174,46 @@ class K8sClientSvc:
         """
         return self.client.get_ingress_detail(ns, ingress_name)
 
+    def delete_deployment(self, deploy_name: str, ns: str) -> str:
+        """
+        删除Deployment
+        """
+        if not deploy_name:
+            raise Exception("deploy_name 非空")
+        if not ns:
+            raise Exception("namespace 非空")
+        return self.client.delete_deployment(deploy_name, ns)
+
+    def delete_service(self, service_name: str, ns: str) -> str:
+        """
+        删除Service
+        """
+        if not service_name:
+            raise Exception("service_name 非空")
+        if not ns:
+            raise Exception("namespace 非空")
+        return self.client.delete_service(service_name, ns)
+
+    def delete_configmap(self, configmap_name: str, ns: str) -> str:
+        """
+        删除ConfigMap
+        """
+        if not configmap_name:
+            raise Exception("configmap_name 非空")
+        if not ns:
+            raise Exception("namespace 非空")
+        return self.client.delete_configmap(configmap_name, ns)
+
+    def delete_ingress(self, ingress_name: str, ns: str) -> str:
+        """
+        删除Ingress
+        """
+        if not ingress_name:
+            raise Exception("ingress_name 非空")
+        if not ns:
+            raise Exception("namespace 非空")
+        return self.client.delete_ingress(ingress_name, ns)
+
 def convert2map(res: dict) -> list[dict]:
     if not res["success"]:
         return []
@@ -415,6 +455,74 @@ class SshK8sClient:
         
         ingress_yaml = yaml.safe_load(result['output'])
         return ingress_yaml
+
+    @re_connect_if_disconnect_decorator
+    def delete_deployment(self, deploy_name: str, ns: str) -> str:
+        """
+        删除Deployment
+        """
+        if not deploy_name:
+            raise Exception("deploy_name 非空")
+        if not ns:
+            raise Exception("namespace 非空")
+        
+        # 使用kubectl删除Deployment
+        result = self.ssh_client.execute_command(f"kubectl delete deployment {deploy_name} -n {ns}")
+        if not result.get('success', False):
+            raise Exception(f"删除Deployment {deploy_name} 失败: {result.get('error', 'Unknown error')}")
+        
+        return result['output']
+
+    @re_connect_if_disconnect_decorator
+    def delete_service(self, service_name: str, ns: str) -> str:
+        """
+        删除Service
+        """
+        if not service_name:
+            raise Exception("service_name 非空")
+        if not ns:
+            raise Exception("namespace 非空")
+        
+        # 使用kubectl删除Service
+        result = self.ssh_client.execute_command(f"kubectl delete service {service_name} -n {ns}")
+        if not result.get('success', False):
+            raise Exception(f"删除Service {service_name} 失败: {result.get('error', 'Unknown error')}")
+        
+        return result['output']
+
+    @re_connect_if_disconnect_decorator
+    def delete_configmap(self, configmap_name: str, ns: str) -> str:
+        """
+        删除ConfigMap
+        """
+        if not configmap_name:
+            raise Exception("configmap_name 非空")
+        if not ns:
+            raise Exception("namespace 非空")
+        
+        # 使用kubectl删除ConfigMap
+        result = self.ssh_client.execute_command(f"kubectl delete configmap {configmap_name} -n {ns}")
+        if not result.get('success', False):
+            raise Exception(f"删除ConfigMap {configmap_name} 失败: {result.get('error', 'Unknown error')}")
+        
+        return result['output']
+
+    @re_connect_if_disconnect_decorator
+    def delete_ingress(self, ingress_name: str, ns: str) -> str:
+        """
+        删除Ingress
+        """
+        if not ingress_name:
+            raise Exception("ingress_name 非空")
+        if not ns:
+            raise Exception("namespace 非空")
+        
+        # 使用kubectl删除Ingress
+        result = self.ssh_client.execute_command(f"kubectl delete ingress {ingress_name} -n {ns}")
+        if not result.get('success', False):
+            raise Exception(f"删除Ingress {ingress_name} 失败: {result.get('error', 'Unknown error')}")
+        
+        return result['output']
 
     @re_connect_if_disconnect_decorator
     def create_deployment(self, ns: str, deployment_data: dict) -> str:
@@ -1007,6 +1115,95 @@ class KubeK8sClient:
                 "status": ingress.status.to_dict() if ingress.status else None,
             }
             return ingress_dict
+        except k8s_client.ApiException as e:
+            if e.status == 404:
+                raise Exception(f"Ingress {ingress_name} 在命名空间 {ns} 中不存在")
+            else:
+                raise e
+
+    @switch_kubeconfig_decorator
+    def delete_deployment(self, deploy_name: str, ns: str) -> str:
+        """
+        删除Deployment
+        """
+        if not deploy_name:
+            raise Exception("deploy_name 非空")
+        if not ns:
+            raise Exception("namespace 非空")
+        
+        try:
+            self.apps_v1.delete_namespaced_deployment(
+                name=deploy_name,
+                namespace=ns
+            )
+            return f"Deployment {deploy_name} 删除成功"
+        except k8s_client.ApiException as e:
+            if e.status == 404:
+                raise Exception(f"Deployment {deploy_name} 在命名空间 {ns} 中不存在")
+            else:
+                raise e
+
+    @switch_kubeconfig_decorator
+    def delete_service(self, service_name: str, ns: str) -> str:
+        """
+        删除Service
+        """
+        if not service_name:
+            raise Exception("service_name 非空")
+        if not ns:
+            raise Exception("namespace 非空")
+        
+        try:
+            self.core_v1.delete_namespaced_service(
+                name=service_name,
+                namespace=ns
+            )
+            return f"Service {service_name} 删除成功"
+        except k8s_client.ApiException as e:
+            if e.status == 404:
+                raise Exception(f"Service {service_name} 在命名空间 {ns} 中不存在")
+            else:
+                raise e
+
+    @switch_kubeconfig_decorator
+    def delete_configmap(self, configmap_name: str, ns: str) -> str:
+        """
+        删除ConfigMap
+        """
+        if not configmap_name:
+            raise Exception("configmap_name 非空")
+        if not ns:
+            raise Exception("namespace 非空")
+        
+        try:
+            self.core_v1.delete_namespaced_config_map(
+                name=configmap_name,
+                namespace=ns
+            )
+            return f"ConfigMap {configmap_name} 删除成功"
+        except k8s_client.ApiException as e:
+            if e.status == 404:
+                raise Exception(f"ConfigMap {configmap_name} 在命名空间 {ns} 中不存在")
+            else:
+                raise e
+
+    @switch_kubeconfig_decorator
+    def delete_ingress(self, ingress_name: str, ns: str) -> str:
+        """
+        删除Ingress
+        """
+        if not ingress_name:
+            raise Exception("ingress_name 非空")
+        if not ns:
+            raise Exception("namespace 非空")
+        
+        try:
+            networking_v1 = k8s_client.NetworkingV1Api()
+            networking_v1.delete_namespaced_ingress(
+                name=ingress_name,
+                namespace=ns
+            )
+            return f"Ingress {ingress_name} 删除成功"
         except k8s_client.ApiException as e:
             if e.status == 404:
                 raise Exception(f"Ingress {ingress_name} 在命名空间 {ns} 中不存在")

@@ -50,6 +50,18 @@ export const updateDeploymentImage = (clusterId, deploymentName, image, namespac
 export const deletePod = (clusterId, podName, namespace) =>
   api.delete(`/clusters/${clusterId}/pods/${podName}`, { params: { namespace } })
 
+export const deleteDeployment = (clusterId, deploymentName, namespace) =>
+  api.delete(`/clusters/${clusterId}/deployments/${deploymentName}`, { params: { namespace } })
+
+export const deleteService = (clusterId, serviceName, namespace) =>
+  api.delete(`/clusters/${clusterId}/services/${serviceName}`, { params: { namespace } })
+
+export const deleteConfigMap = (clusterId, configMapName, namespace) =>
+  api.delete(`/clusters/${clusterId}/configmaps/${configMapName}`, { params: { namespace } })
+
+export const deleteIngress = (clusterId, ingressName, namespace) =>
+  api.delete(`/clusters/${clusterId}/ingresses/${ingressName}`, { params: { namespace } })
+
 export const getPodLogs = (clusterId, podName, namespace, lines) =>
   api.get(`/clusters/${clusterId}/pods/${podName}/logs`, { 
     params: { namespace, lines } 

@@ -50,7 +50,7 @@
 import { ref, onMounted, defineProps, defineEmits } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
-import { getIngresses } from '../../api/cluster'
+import { getIngresses, deleteIngress } from '../../api/cluster'
 import DetailViewDialog from '../dialogs/DetailViewDialog.vue'
 
 const props = defineProps({
@@ -132,11 +132,13 @@ const handleDelete = async (row) => {
       }
     )
 
-    ElMessage.info(`删除Ingress ${row.NAME} 功能待实现`)
+    await deleteIngress(props.clusterId, row.NAME, props.namespace)
+    ElMessage.success('Ingress删除成功')
     // 实际删除后重新加载数据
     loadData()
   } catch (error) {
     if (error !== 'cancel') {
+      console.error('删除Ingress失败:', error)
       ElMessage.error(`删除Ingress失败: ${error.message || error}`)
     }
   }

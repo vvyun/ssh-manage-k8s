@@ -385,6 +385,70 @@ def delete_pod(cluster_id, pod_name):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/clusters/<cluster_id>/deployments/<deployment_name>', methods=['DELETE'])
+def delete_deployment(cluster_id, deployment_name):
+    """删除Deployment"""
+    namespace = request.args.get('namespace', 'default')
+
+    client, error_resp = get_cluster_client(cluster_id)
+    if error_resp:
+        return error_resp
+
+    try:
+        result = client.delete_deployment(deployment_name, namespace)
+        return jsonify({"success": True, "result": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/clusters/<cluster_id>/services/<service_name>', methods=['DELETE'])
+def delete_service(cluster_id, service_name):
+    """删除Service"""
+    namespace = request.args.get('namespace', 'default')
+
+    client, error_resp = get_cluster_client(cluster_id)
+    if error_resp:
+        return error_resp
+
+    try:
+        result = client.delete_service(service_name, namespace)
+        return jsonify({"success": True, "result": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/clusters/<cluster_id>/configmaps/<configmap_name>', methods=['DELETE'])
+def delete_configmap(cluster_id, configmap_name):
+    """删除ConfigMap"""
+    namespace = request.args.get('namespace', 'default')
+
+    client, error_resp = get_cluster_client(cluster_id)
+    if error_resp:
+        return error_resp
+
+    try:
+        result = client.delete_configmap(configmap_name, namespace)
+        return jsonify({"success": True, "result": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/clusters/<cluster_id>/ingresses/<ingress_name>', methods=['DELETE'])
+def delete_ingress(cluster_id, ingress_name):
+    """删除Ingress"""
+    namespace = request.args.get('namespace', 'default')
+
+    client, error_resp = get_cluster_client(cluster_id)
+    if error_resp:
+        return error_resp
+
+    try:
+        result = client.delete_ingress(ingress_name, namespace)
+        return jsonify({"success": True, "result": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/clusters/<cluster_id>/pods/<pod_name>/logs', methods=['GET'])
 def get_pod_logs(cluster_id, pod_name):
     """获取Pod日志"""

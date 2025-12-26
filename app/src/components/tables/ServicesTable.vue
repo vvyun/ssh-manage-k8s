@@ -17,10 +17,13 @@
       <el-table-column prop="CLUSTER_IP" label="集群IP" width="150" />
       <el-table-column prop="PORTS" label="端口" min-width="200" />
       <el-table-column prop="AGE" label="运行时长" width="120" />
-      <el-table-column label="操作" width="100" fixed="right">
+      <el-table-column label="操作" width="250" fixed="right">
         <template #default="{ row }">
           <el-button type="info" size="small" @click="handleShowServiceDetail(row.NAME)">
             详情
+          </el-button>
+          <el-button type="danger" size="small" @click="handleDelete(row.NAME)">
+            删除
           </el-button>
         </template>
       </el-table-column>
@@ -45,8 +48,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { Search } from '@element-plus/icons-vue'
-import { getServices } from '../../api/cluster'
-import { ElMessage } from 'element-plus'
+import { getServices, deleteService } from '../../api/cluster'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import DetailViewDialog from '../dialogs/DetailViewDialog.vue'
 
 const props = defineProps({
@@ -109,6 +112,29 @@ const handleShowServiceDetail = (serviceName) => {
 // 处理创建按钮点击
 const handleCreate = () => {
   ElMessage.info('创建Service功能待实现')
+}
+
+const handleDelete = async (serviceName) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除Service ${serviceName}吗？`,
+      '确认删除',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    
+    await deleteService(props.clusterId, serviceName, props.namespace)
+    ElMessage.success('删除成功')
+    loadData() // 重新加载数据
+  } catch (error) {
+    if (error !== 'cancel') { // 用户取消操作时不显示错误信息
+      console.error('删除Service失败:', error)
+      ElMessage.error(error.message || '删除失败')
+    }
+  }
 }
 
 // 暴露方法给父组件

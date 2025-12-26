@@ -27,6 +27,9 @@
           <el-button type="info" size="small" @click="handleShowDetail(row.NAME)">
             详情
           </el-button>
+          <el-button type="danger" size="small" @click="handleDelete(row.NAME)">
+            删除
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -61,9 +64,9 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { getDeployments } from '../../api/cluster'
+import { getDeployments, deleteDeployment } from '../../api/cluster'
 import UpdateImageDialog from '../dialogs/UpdateImageDialog.vue'
 import ScaleDeploymentDialog from '../dialogs/ScaleDeploymentDialog.vue'
 import CreateDeploymentDialog from '../dialogs/CreateDeploymentDialog.vue'
@@ -132,6 +135,29 @@ const handleScale = (deployment) => {
 const handleShowDetail = (deploymentName) => {
   selectedDeployment.value = deploymentName
   showDetailDialog.value = true
+}
+
+const handleDelete = async (deploymentName) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除Deployment ${deploymentName}吗？`,
+      '确认删除',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    
+    await deleteDeployment(props.clusterId, deploymentName, props.namespace)
+    ElMessage.success('删除成功')
+    loadData() // 重新加载数据
+  } catch (error) {
+    if (error !== 'cancel') { // 用户取消操作时不显示错误信息
+      console.error('删除Deployment失败:', error)
+      ElMessage.error(error.message || '删除失败')
+    }
+  }
 }
 
 watch([() => props.clusterId, () => props.namespace], () => {
